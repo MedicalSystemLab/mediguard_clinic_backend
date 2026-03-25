@@ -5,3 +5,12 @@ include:
   - ./kong/docker-compose.yml
 
 services:
+  kong:
+    depends_on:
+      kong-migrations:
+        condition: service_completed_successfully
+
+  kong-migrations:
+    depends_on:
+      postgres_db:
+        condition: service_healthy

@@ -4,11 +4,11 @@ services:
     restart: always
     ports:
       - "6379:6379"
-    command: redis-server --requirepass "7Dj1dk4dl4!@" --appendonly yes
+    command: redis-server --requirepass "${REDIS_PASSWORD}" --appendonly yes
     volumes:
       - ./data:/data
     healthcheck:
-      test: [ "CMD", "redis-cli", "-a", "7Dj1dk4dl4!@", "ping" ]
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -17,10 +17,3 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    networks:
-      - mediguard-clinic-network
-
-networks:
-  mediguard-clinic-network:
-    external: true
-    driver: bridge

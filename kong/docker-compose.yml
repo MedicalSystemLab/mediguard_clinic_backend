@@ -5,8 +5,6 @@ services:
     command: kong migrations bootstrap
     env_file:
       - .env
-    networks:
-      - mediguard-clinic-network
 
   kong:
     image: kong:3.9
@@ -19,13 +17,3 @@ services:
       - "18443:8443"   # SSL Proxy Port
       - "18001:8001"   # Admin API Port
       - "18002:8002"   # Kong Manager (GUI) Port
-    depends_on:
-      kong-migrations:
-        condition: service_completed_successfully
-    networks:
-      - mediguard-clinic-network
-
-networks:
-  mediguard-clinic-network:
-    external: true
-    driver: bridge
