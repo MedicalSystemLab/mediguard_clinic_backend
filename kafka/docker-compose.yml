@@ -1,0 +1,50 @@
+services:
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v23.3.6
+    container_name: redpanda
+    command:
+      - redpanda start
+      - --kafka-addr internal://0.0.0.0:29092,external://0.0.0.0:9092
+      - --advertise-kafka-addr internal://redpanda:29092,external://localhost:19092
+      - --pandaproxy-addr internal://0.0.0.0:28082,external://0.0.0.0:8082
+      - --advertise-pandaproxy-addr internal://redpanda:28082,external://localhost:18082
+      - --rpc-addr 0.0.0.0:33145
+      - --advertise-rpc-addr redpanda:33145
+      - --mode dev-container
+      - --set redpanda.storage_min_free_bytes=524288000
+      - --set redpanda.delete_retention_ms=300000
+      - --set redpanda.log_retention_ms=3600000
+      - --smp 1
+      - --memory 1G
+    ports:
+      - "18082:8082"
+      - "19092:9092"
+      - "19644:9644"
+    volumes:
+      - ./data:/var/lib/redpanda/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  console:
+    image: docker.redpanda.com/redpandadata/console:v2.4.3
+    container_name: redpanda-console
+    entrypoint: /bin/sh
+    command: -c "echo \"$$CONSOLE_CONFIG_FILE\" > /tmp/config.yml; /app/console --config.filepath=/tmp/config.yml"
+    environment:
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda:29092"]
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda:9644"]
+    ports:
+      - "18080:18080"
+    restart: always
+    depends_on:
+      redpanda:
+        condition: service_healthy

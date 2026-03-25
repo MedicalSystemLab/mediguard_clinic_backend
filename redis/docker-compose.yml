@@ -1,0 +1,26 @@
+services:
+  redis_db:
+    image: redis:7.2-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass "7Dj1dk4dl4!@" --appendonly yes
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "7Dj1dk4dl4!@", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - mediguard-clinic-network
+
+networks:
+  mediguard-clinic-network:
+    external: true
+    driver: bridge

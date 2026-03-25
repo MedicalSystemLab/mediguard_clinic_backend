@@ -1,0 +1,7 @@
+name: mediguard-clinic
+
+include:
+  - ./postgres/docker-compose.yml
+  - ./kong/docker-compose.yml
+
+services:
