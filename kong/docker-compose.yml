@@ -5,6 +5,9 @@ services:
     command: kong migrations bootstrap
     env_file:
       - .env
+    depends_on:
+      postgres_db:
+        condition: service_healthy
 
   kong:
     image: kong:3.9
@@ -12,6 +15,9 @@ services:
     restart: always
     env_file:
       - .env
+    depends_on:
+      kong-migrations:
+        condition: service_completed_successfully
     ports:
       - "10080:8000"     # API Proxy Port
       - "18443:8443"   # SSL Proxy Port
