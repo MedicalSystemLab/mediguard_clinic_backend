@@ -16,4 +16,5 @@ dependencies = [
     "asyncpg>=0.29.0",
     "sqlalchemy>=2.0.29",
     "psycopg2-binary>=2.9.11",
+    "uvicorn>=0.42.0",
 ]

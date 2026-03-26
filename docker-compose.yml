@@ -4,3 +4,5 @@ include:
   - ./postgres/docker-compose.yml
   - ./kong/docker-compose.yml
   - ./kafka/docker-compose.yml
+  - ./redis/docker-compose.yml
+  - ./auth/docker-compose.yml

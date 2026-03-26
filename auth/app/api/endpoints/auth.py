@@ -5,10 +5,9 @@ from jose import jwt, JWTError
 from common.core.auth import get_current_user_id
 from common.core.security import verify_password, create_access_token, create_refresh_token, decrypt_data
 from common.core.config import settings
-from common.schemas.user import User as UserSchema
 from common.db.session import get_db
-from ....schemas.auth import Register, Token, Login, RefreshToken
-from ...commons.crud_user import user as crud_user
+from auth.app.schemas.auth import Register, Token, Login, RefreshToken
+from auth.app.api.commons.crud_user import user as crud_user
 
 router = APIRouter()
 
