@@ -14,7 +14,6 @@ from .security import (
 from .auth import get_current_user_id
 from .redis import redis_manager
 from .kafka import kafka_producer
-from .nickname import generate_random_nickname
 
 __all__ = [
     "settings",
@@ -31,5 +30,4 @@ __all__ = [
     "get_current_user_id",
     "redis_manager",
     "kafka_producer",
-    "generate_random_nickname"
 ]

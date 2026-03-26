@@ -15,9 +15,8 @@ else:
     load_dotenv() # 현재 작업 디렉토리에서 기본적으로 로드
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "heartmark-backend"
+    PROJECT_NAME: str = "mediguard-clinic-backend"
     API_STR: str = "/api"
-    API_V1_STR: str = "/v1"
     
     # Database Configuration
     POSTGRES_SERVER: str = os.getenv("POSTGRES_SERVER", "localhost")
@@ -30,18 +29,18 @@ class Settings(BaseSettings):
     KAFKA_BOOTSTRAP_SERVERS: str = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
     KAFKA_TOPIC_BIOSIGNAL: str = "biosignal-events"
     KAFKA_TOPIC_AUTH: str = "auth-events"
-    KAFKA_TOPIC_USER: str = "user-events"
+    KAFKA_TOPIC_USER: str = "clinical_manage-events"
     
     # Redis Configuration
     REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
     REDIS_PORT: int = int(os.getenv("REDIS_PORT", 6379))
-    REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD", "7Dj1dk4dl4!@")
+    REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD")
     
     # Security & JWT Configuration
     # Generate a secret key: openssl rand -hex 32
     SECRET_KEY: str = os.getenv("SECRET_KEY")
     ALGORITHM: str = "HS256"
-    JWT_ISSUER: str = "heartmark-auth"
+    JWT_ISSUER: str = "mediguard-clinic-auth"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))
     REFRESH_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES", 10080))
     
