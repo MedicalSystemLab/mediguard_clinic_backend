@@ -2,10 +2,13 @@ from fastapi import APIRouter, status, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Request
 from jose import jwt, JWTError
+from datetime import datetime
 from common.core.auth import get_current_user_id
-from common.core.security import verify_password, create_access_token, create_refresh_token, decrypt_data
+from common.core.security import verify_password, create_access_token, create_refresh_token
 from common.core.config import settings
+from common.core.kafka_producer import publish_event
 from common.db.session import get_db
+from common.schemas.events import UserRegisteredEvent
 from auth.app.schemas.auth import Register, Token, Login, RefreshToken
 from auth.app.schemas.auth import User as UserSchema
 from auth.app.api.commons.crud_user import user as crud_user
@@ -25,17 +28,29 @@ async def register(
 ):
     """
     새로운 사용자 등록 (회원가입)
-    모든 요청(성공/실패)에 대해 로그를 남깁니다.
+    User 생성 후 Kafka 이벤트를 발행하여 PatientProfile 생성을 트리거합니다.
     """
-    user = await crud_user.get_by_email(db, email=user_in.email)
+    user = await crud_user.get_by_username(db, username=user_in.username)
 
     if user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="이 이메일로 등록된 사용자가 이미 존재합니다.",
+            detail="이 사용자명으로 등록된 사용자가 이미 존재합니다.",
         )
 
-    await crud_user.create(db, obj_in=user_in)
+    new_user = await crud_user.create(db, obj_in=user_in)
+
+    # Publish user.registered event to Kafka
+    event = UserRegisteredEvent(
+        user_id=str(new_user.user_id),
+        username=new_user.username,
+        timestamp=datetime.utcnow()
+    )
+    await publish_event(
+        topic=settings.KAFKA_TOPIC_AUTH,
+        event=event.model_dump(),
+        key=str(new_user.user_id)
+    )
 
     return
 
@@ -49,12 +64,12 @@ async def login(
     """
     로그인 및 토큰 발급
     """
-    user = await crud_user.get_by_email(db, email=login_in.email)
+    user = await crud_user.get_by_username(db, username=login_in.username)
 
     if not user or not verify_password(login_in.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="이메일 또는 비밀번호가 올바르지 않습니다.",
+            detail="사용자명 또는 비밀번호가 올바르지 않습니다.",
         )
 
     if not user.is_active:
@@ -144,8 +159,5 @@ async def read_user_me(
     user = await crud_user.get(db, id=user_id)
     if not user:
         raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
-
-    # email_enc 복호화하여 평문 이메일 제공
-    email = decrypt_data(user.email_enc)
 
     return UserSchema(user_id=user.user_id)

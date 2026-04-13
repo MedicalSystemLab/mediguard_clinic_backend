@@ -6,3 +6,4 @@ include:
   - ./kafka/docker-compose.yml
   - ./redis/docker-compose.yml
   - ./auth/docker-compose.yml
+  - ./consumer/docker-compose.yml

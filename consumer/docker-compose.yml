@@ -1,0 +1,32 @@
+services:
+  consumer:
+    build:
+      context: ..
+      dockerfile: consumer/Dockerfile
+    container_name: mediguard-consumer
+    restart: always
+    ports:
+      - "8000"  # Expose health check API on port 8003
+    env_file:
+      - ../.env
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=redpanda:29092
+      - POSTGRES_SERVER=postgres_db
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - default
+
+networks:
+  default:
+    name: mediguard-clinic_default
+    external: true
