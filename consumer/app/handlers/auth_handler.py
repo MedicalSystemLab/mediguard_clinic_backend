@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from common.db.session import async_session_maker
+from common.db.session import SessionLocal
 from clinical_manage.app.models.info import PatientProfile
 from auth.app.models.auth import User, Patient
 from common.core.security import get_password_hash
@@ -17,7 +17,7 @@ async def handle_user_registered(event_data: dict):
         username = event_data.get('username')
         password = event_data.get('password')
 
-        async with async_session_maker() as db:
+        async with SessionLocal() as db:
             result = await db.execute(select(User).where(User.username == username))
             existing_user = result.scalars().first()
 
@@ -41,7 +41,7 @@ async def handle_patient_registered(event_data: dict):
         patient_password = event_data.get('patient_password')
         patient_sex = event_data.get('patient_sex')
 
-        async with async_session_maker() as db:
+        async with SessionLocal() as db:
             # Check if patient profile already exists
 
 
