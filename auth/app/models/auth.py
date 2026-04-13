@@ -24,3 +24,17 @@ class User(AuthBase):
     activated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=True)
 
     __table_args__ = {"schema": "auth"}
+
+
+class Patient(AuthBase):
+    __tablename__ = "patient"
+
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), server_default=func.gen_random_uuid(),
+        primary_key=True, default=uuid.uuid4, index=True)
+    patient_number: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(default=True)
+    activated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=True)
+    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = {"schema": "auth"}

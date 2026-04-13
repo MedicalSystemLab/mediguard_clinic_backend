@@ -1,10 +1,11 @@
-from sqlalchemy import String, UUID, TIMESTAMP, Boolean, Enum, Integer
+from sqlalchemy import String, UUID, TIMESTAMP, Boolean, Enum, Integer, Date
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 from clinical_manage.app.models.base import ClinicBase
 import uuid
 import enum
+from datetime import date
 
 class GenderEnum(enum.Enum):
     M = "M"  # Male
@@ -30,6 +31,17 @@ class PractitionerRoleEnum(enum.Enum):
 #     rule: Mapped[PractitionerRoleEnum] = mapped_column(Enum(PractitionerRoleEnum), nullable=False, default=PractitionerRoleEnum.UNSPECIFIED)
 #     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
+# 병원 부서 정보 테이블
+class Department(ClinicBase):
+    __tablename__ = "department"
+
+    department_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), server_default=func.gen_random_uuid(),
+        primary_key=True, default=uuid.uuid4, index=True
+    )
+    department_name: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+
+
 class Ward(ClinicBase):
     __tablename__ = "ward"
 
@@ -43,17 +55,18 @@ class Ward(ClinicBase):
 
     __table_args__ = {"schema": "clinical_manage"}
 
-class Patient(ClinicBase):
-    __tablename__ = "patient"
+class PatientProfile(ClinicBase):
+    __tablename__ = "patient_profile"
 
-    patient_id: Mapped[uuid.UUID] = mapped_column(
+    patient_profile_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), server_default=func.gen_random_uuid(),
         primary_key=True, default=uuid.uuid4, index=True)
-    patient_number: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    patient_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True, nullable=False)
     patient_name: Mapped[str] = mapped_column(String(255), nullable=False)
     sex : Mapped[GenderEnum] = mapped_column(Enum(GenderEnum), nullable=False, default=GenderEnum.U)
-    age : Mapped[int] = mapped_column(Integer, nullable=False)
-    is_admitted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    birth : Mapped[date] = mapped_column(Date, nullable=False, default=date(1991,1,1))
+    is_admitted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    department_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), sa.ForeignKey("clinical_manage.department.department_id"), nullable=False)
     admitted_ward_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), sa.ForeignKey("clinical_manage.ward.ward_id"), nullable=False)
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     discharged_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=True)

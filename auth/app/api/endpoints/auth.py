@@ -7,6 +7,7 @@ from common.core.security import verify_password, create_access_token, create_re
 from common.core.config import settings
 from common.db.session import get_db
 from auth.app.schemas.auth import Register, Token, Login, RefreshToken
+from auth.app.schemas.auth import User as UserSchema
 from auth.app.api.commons.crud_user import user as crud_user
 
 router = APIRouter()
@@ -34,15 +35,9 @@ async def register(
             detail="이 이메일로 등록된 사용자가 이미 존재합니다.",
         )
 
-    new_user = await crud_user.create(db, obj_in=user_in)
+    await crud_user.create(db, obj_in=user_in)
 
-    # 응답 데이터 준비
-    user_data = {
-        "user_id": new_user.user_id,
-        "email": user_in.email,
-        "is_active": new_user.is_active
-    }
-    return user_data
+    return
 
 
 @router.post("/login", response_model=Token, status_code=status.HTTP_200_OK)
@@ -153,8 +148,4 @@ async def read_user_me(
     # email_enc 복호화하여 평문 이메일 제공
     email = decrypt_data(user.email_enc)
 
-    return {
-        "user_id": user.user_id,
-        "email": email,
-        "is_active": user.is_active
-    }
+    return UserSchema(user_id=user.user_id)
