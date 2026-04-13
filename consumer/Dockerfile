@@ -37,6 +37,8 @@ COPY --from=builder /app/.venv /app/.venv
 COPY common/ /app/common/
 COPY clinical_manage/app/models/ /app/clinical_manage/app/models/
 COPY consumer/ /app/consumer/
+COPY auth/ /app/auth
+COPY biosignal/ /app/biosignal
 
 RUN chmod +rx /app/consumer/entrypoint.sh
 
