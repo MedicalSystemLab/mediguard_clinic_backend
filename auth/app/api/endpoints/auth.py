@@ -8,8 +8,8 @@ from common.core.security import verify_password, create_access_token, create_re
 from common.core.config import settings
 from common.core.kafka_producer import publish_event
 from common.db.session import get_db
-from common.schemas.events import UserRegisteredEvent
-from auth.app.schemas.auth import Register, Token, Login, RefreshToken
+from common.schemas.events import UserRegisteredEvent, PatientRegisteredEvent
+from auth.app.schemas.auth import UserRegister, Token, Login, RefreshToken, PatientRegister
 from auth.app.schemas.auth import User as UserSchema
 from auth.app.api.commons.crud_user import user as crud_user
 
@@ -20,16 +20,12 @@ def health_check():
     return {"status": "ok"}
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
+@router.post("/user/register", status_code=status.HTTP_201_CREATED)
 async def register(
         *,
         db: AsyncSession = Depends(get_db),
-        user_in: Register,
+        user_in: UserRegister,
 ):
-    """
-    새로운 사용자 등록 (회원가입)
-    User 생성 후 Kafka 이벤트를 발행하여 PatientProfile 생성을 트리거합니다.
-    """
     user = await crud_user.get_by_username(db, username=user_in.username)
 
     if user:
@@ -38,22 +34,48 @@ async def register(
             detail="이 사용자명으로 등록된 사용자가 이미 존재합니다.",
         )
 
-    new_user = await crud_user.create(db, obj_in=user_in)
-
     # Publish user.registered event to Kafka
     event = UserRegisteredEvent(
-        user_id=str(new_user.user_id),
-        username=new_user.username,
-        timestamp=datetime.utcnow()
+        username=user_in.username,
+        password=user_in.password,
     )
     await publish_event(
         topic=settings.KAFKA_TOPIC_AUTH,
         event=event.model_dump(),
-        key=str(new_user.user_id)
+        key=user_in.username
     )
 
     return
 
+@router.post("/patient/register", status_code=status.HTTP_201_CREATED)
+async def register(
+        *,
+        db: AsyncSession = Depends(get_db),
+        user_in: PatientRegister,
+):
+    user = await crud_user.get_by_username(db, username=user_in.username)
+
+    if user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="이 환자 번호로 등록된 사용자가 이미 존재합니다.",
+        )
+
+    # Publish user.registered event to Kafka
+    event = PatientRegisteredEvent(
+        patient_number=user_in.patient_number,
+        patient_name=user_in.patient_name,
+        patient_password=user_in.patient_password,
+        patient_sex=user_in.patient_sex,
+
+    )
+    await publish_event(
+        topic=settings.KAFKA_TOPIC_AUTH,
+        event=event.model_dump(),
+        key=user_in.patient_number
+    )
+
+    return
 
 @router.post("/login", response_model=Token, status_code=status.HTTP_200_OK)
 async def login(

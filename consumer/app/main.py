@@ -10,7 +10,7 @@ from fastapi import FastAPI
 import uvicorn
 
 from consumer.app.core.kafka_consumer import KafkaConsumerManager, set_metrics_updater
-from consumer.app.handlers.auth_handler import handle_user_registered
+from consumer.app.handlers.auth_handler import handle_user_registered, handle_patient_registered
 from consumer.app.handlers.biosignal_handler import handle_biosignal_event
 from consumer.app.handlers.clinical_handler import handle_clinical_event
 from consumer.app.api.health import router as health_router, update_metrics, increment_metric
@@ -51,6 +51,7 @@ async def run_consumer():
 
     # Register event handlers
     consumer_manager.register_handler("user.registered", handle_user_registered)
+    consumer_manager.register_handler("patient.registered", handle_patient_registered)
     # Add more handlers as needed
     # consumer_manager.register_handler("biosignal.data", handle_biosignal_event)
     # consumer_manager.register_handler("clinical.update", handle_clinical_event)

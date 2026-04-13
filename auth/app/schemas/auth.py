@@ -1,9 +1,15 @@
 from pydantic import BaseModel
 import uuid
 
-class Register(BaseModel):
+class UserRegister(BaseModel):
     username: str
     password: str
+
+class PatientRegister(BaseModel):
+    patient_number: str
+    patient_name: str
+    patient_password: str
+    patient_sex: str
 
 class Token(BaseModel):
     access_token: str

@@ -2,7 +2,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from ...models.auth import User
-from ...schemas.auth import Register
+from ...schemas.auth import UserRegister
 from common.core.security import get_password_hash
 
 class CRUDUser:
@@ -14,7 +14,7 @@ class CRUDUser:
         result = await db.execute(select(User).where(User.username == username))
         return result.scalars().first()
 
-    async def create(self, db: AsyncSession, *, obj_in: Register) -> User:
+    async def create(self, db: AsyncSession, *, obj_in: UserRegister) -> User:
         db_obj = User(
             username=obj_in.username,
             password_hash=get_password_hash(obj_in.password),

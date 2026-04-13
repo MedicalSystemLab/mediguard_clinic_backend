@@ -6,15 +6,16 @@ import uuid
 class UserRegisteredEvent(BaseModel):
     """User registration event schema"""
     event_type: str = "user.registered"
-    user_id: str
     username: str
-    timestamp: datetime
+    password: str
 
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
-
+class PatientRegisteredEvent(BaseModel):
+    """Patient registration event schema"""
+    event_type: str = "patient.registered"
+    patient_number: str
+    patient_name: str
+    patient_password: str
+    patient_sex: str
 
 class BiosignalEvent(BaseModel):
     """Biosignal event schema (template for future use)"""
@@ -27,7 +28,6 @@ class BiosignalEvent(BaseModel):
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
-
 
 class ClinicalEvent(BaseModel):
     """Clinical event schema (template for future use)"""
