@@ -17,6 +17,7 @@ else:
 class Settings(BaseSettings):
     PROJECT_NAME: str = "mediguard-clinic-backend"
     API_STR: str = "/api"
+    API_V1_STR: str = "/v1"
     
     # Database Configuration
     POSTGRES_SERVER: str = os.getenv("POSTGRES_SERVER", "localhost")
