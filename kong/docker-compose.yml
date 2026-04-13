@@ -19,7 +19,7 @@ services:
       kong-migrations:
         condition: service_completed_successfully
     ports:
-      - "10080:8000"     # API Proxy Port
-      - "18443:8443"   # SSL Proxy Port
-      - "18001:8001"   # Admin API Port
-      - "18002:8002"   # Kong Manager (GUI) Port
+      - "80:8000"     # API Proxy Port
+      - "443:8443"   # SSL Proxy Port
+      - "8001:8001"   # Admin API Port
+      - "8002:8002"   # Kong Manager (GUI) Port

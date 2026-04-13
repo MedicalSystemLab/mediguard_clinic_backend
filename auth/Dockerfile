@@ -36,7 +36,7 @@ COPY --from=builder /app/.venv /app/.venv
 COPY common/ /app/common/
 COPY auth/ /app/auth/
 
-RUN chmod +x /app/auth/entrypoint.sh
+RUN chmod +rx /app/auth/entrypoint.sh
 
 # Expose port
 EXPOSE 8000
