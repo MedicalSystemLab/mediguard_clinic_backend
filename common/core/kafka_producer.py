@@ -24,8 +24,6 @@ class KafkaProducerSingleton:
                 key_serializer=lambda k: k.encode('utf-8') if k else None,
                 compression_type='gzip',
                 acks='all',  # Wait for all replicas
-                retries=3,
-                max_in_flight_requests_per_connection=1,  # Ensure ordering
             )
 
         if not cls._started:
