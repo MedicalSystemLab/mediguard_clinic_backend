@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     # Generate a secret key: openssl rand -hex 32
     SECRET_KEY: str = os.getenv("SECRET_KEY")
     ALGORITHM: str = "HS256"
-    JWT_ISSUER: str = "mediguard-clinic-auth"
+    JWT_ISSUER: str = os.getenv("JWT_ISSUER", "mediguard-clinic-auth")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))
     REFRESH_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES", 10080))
     
