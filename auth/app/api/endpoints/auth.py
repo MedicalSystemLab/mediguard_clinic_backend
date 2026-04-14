@@ -101,10 +101,16 @@ async def login(
         )
 
     user_id = user.user_id
+    permission = user.permissions
+
+    sub = {
+        "userId" : user_id,
+        "permissions" : permission
+    }
 
     return {
-        "access_token": create_access_token(user_id),
-        "refresh_token": create_refresh_token(user_id),
+        "access_token": create_access_token(sub),
+        "refresh_token": create_refresh_token(sub),
         "token_type": "bearer",
     }
 
