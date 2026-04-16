@@ -18,12 +18,16 @@ class Token(BaseModel):
 
 class PatientLogin(BaseModel):
     patient_number: str
+    patient_password: str
 
 
-class Login(BaseModel):
+class UserLogin(BaseModel):
     username: str
     password: str
 
+class PatientLogin(BaseModel):
+    patient_number: str
+    patient_password: str
 
 class RefreshToken(BaseModel):
     refresh_token: str
@@ -34,5 +38,18 @@ class UserBase(BaseModel):
     class Config:
         from_attributes = True
 
+class PatientBase(BaseModel):
+    patient_id: uuid.UUID
+
+    class Config:
+        from_attributes = True
+
+
+class UserMeResponse(UserBase):
+    permissions: str
+
 class User(UserBase):
+    pass
+
+class Patient(PatientBase):
     pass

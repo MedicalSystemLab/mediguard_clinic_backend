@@ -140,7 +140,7 @@ def mask_email(email: str) -> str:
     except Exception:
         return "invalid-email"
 
-def create_access_token(data: dict | Any, expires_delta: timedelta | None = None) -> str:
+def create_user_access_token(data: dict | Any, expires_delta: timedelta | None = None) -> str:
     """Access Token 생성"""
 
     sub = data.get("sub")
@@ -160,7 +160,7 @@ def create_access_token(data: dict | Any, expires_delta: timedelta | None = None
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-def create_refresh_token(data: dict | Any, expires_delta: timedelta | None = None) -> str:
+def create_user_refresh_token(data: dict | Any, expires_delta: timedelta | None = None) -> str:
     """Refresh Token 생성"""
 
     sub = data.get("sub")
@@ -174,6 +174,43 @@ def create_refresh_token(data: dict | Any, expires_delta: timedelta | None = Non
         "exp": expire, 
         "sub": sub,
         "permissions": permissions,
+        "iss": settings.JWT_ISSUER,
+        "type": "refresh"
+    }
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
+
+def create_patient_access_token(data: dict | Any, expires_delta: timedelta | None = None) -> str:
+    """Access Token 생성"""
+
+    sub = data.get("PatientId")
+
+    if expires_delta:
+        expire = datetime.now(UTC) + expires_delta
+    else:
+        expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode = {
+        "exp": expire,
+        "sub": sub,
+        "iss": settings.JWT_ISSUER,
+        "type": "access"
+    }
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
+
+def create_patient_refresh_token(data: dict | Any, expires_delta: timedelta | None = None) -> str:
+    """Refresh Token 생성"""
+
+    sub = data.get("PatientId")
+    permissions = data.get("permissions")
+
+    if expires_delta:
+        expire = datetime.now(UTC) + expires_delta
+    else:
+        expire = datetime.now(UTC) + timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
+    to_encode = {
+        "exp": expire,
+        "sub": sub,
         "iss": settings.JWT_ISSUER,
         "type": "refresh"
     }

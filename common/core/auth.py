@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 class TokenPayload(BaseModel):
     sub: Optional[str] = None
+    permissions: Optional[str] = None
     iss: Optional[str] = None
     type: Optional[str] = None
 
@@ -26,8 +27,6 @@ async def get_current_user_id(
     token = authorization.split(" ")[1]
     
     try:
-        # Kong에서 검증을 마쳤으므로 여기서는 파싱만 수행 (부하 절감)
-        # 만약 보안 강화를 원한다면 verify_signature=True로 설정
         payload = jwt.decode(
             token, 
             settings.SECRET_KEY, 
@@ -50,6 +49,47 @@ async def get_current_user_id(
             
         return token_data.sub
         
+    except (JWTError, Exception) as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Could not validate credentials: {str(e)}",
+        )
+
+
+def get_current_patient_id(
+    authorization: str = Header(..., description="Bearer <token>")
+) -> str:
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header format",
+        )
+
+    token = authorization.split(" ")[1]
+
+    try:
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+            options={"verify_signature": False}
+        )
+        token_data = TokenPayload(**payload)
+
+        if token_data.type != "access":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type",
+            )
+
+        if token_data.sub is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token missing subject",
+            )
+
+        return token_data.sub
+
     except (JWTError, Exception) as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
