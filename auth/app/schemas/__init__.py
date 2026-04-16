@@ -1,1 +1,1 @@
-from .auth import UserRegister, PatientRegister, Token, Login, RefreshToken
+from .auth import UserRegister, PatientRegister, Token, UserLogin, RefreshToken
