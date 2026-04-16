@@ -78,7 +78,7 @@ def get_current_patient_id(
         )
         token_data = TokenPayload(**payload)
 
-        if token_data.type != "access":
+        if token_data.type not in  ["access", "refresh"]:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token type",

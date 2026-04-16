@@ -48,3 +48,4 @@ class CRUDPatient:
 
 
 user = CRUDUser()
+patient = CRUDPatient()
