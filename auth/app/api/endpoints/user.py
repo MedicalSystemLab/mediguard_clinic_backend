@@ -1,6 +1,6 @@
-from fastapi import APIRouter, status, HTTPException, Depends
+from fastapi import APIRouter, status, HTTPException, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from common.core.auth import get_current_user_id
 from common.core.security import verify_password, create_user_access_token, create_user_refresh_token
@@ -8,11 +8,12 @@ from common.core.config import settings
 from common.core.kafka_producer import publish_event
 from common.db.session import get_db
 from common.schemas.events import UserRegisteredEvent
-from auth.app.schemas.auth import UserRegister, Token, UserLogin, RefreshToken, UserMeResponse
+from auth.app.schemas.auth import UserRegister, Token, UserLogin, UserMeResponse
 from auth.app.schemas.auth import User as UserSchema
 from auth.app.api.commons.crud_user import user as crud_user
 
 router = APIRouter()
+security = HTTPBearer()
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(
@@ -64,8 +65,8 @@ async def user_login(
             detail="비활성화된 계정입니다. 관리자에게 문의하세요.",
         )
 
-    user_id = user.user_id
-    permission = user.permissions
+    user_id = str(user.user_id)
+    permission = user.permissions.value
 
     data = {
         "userId" : user_id,
@@ -83,41 +84,12 @@ async def user_login(
 async def refresh_token(
         *,
         db: AsyncSession = Depends(get_db),
-        token_in: RefreshToken,
-        request: Request
+        user_id: str = Depends(get_current_user_id),
+        request: Request,
 ):
     """
     Refresh Token을 사용하여 새로운 Access/Refresh Token 발급
     """
-    # 1. Refresh Token 디코드 및 검증
-    try:
-        payload = jwt.decode(
-            token_in.refresh_token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM]
-        )
-    except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="유효하지 않거나 만료된 Refresh Token입니다.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    # 2. 토큰 타입 확인
-    if payload.get("type") != "refresh":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="유효하지 않은 토큰 타입입니다.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="토큰에 사용자 정보가 없습니다.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
 
     # 3. 사용자 존재 여부 및 활성화 상태 확인
     user = await crud_user.get(db, id=user_id)
@@ -132,10 +104,17 @@ async def refresh_token(
             detail="비활성화된 계정입니다.",
         )
 
+    permission = user.permissions.value
+
+    data = {
+        "userId" : user_id,
+        "permissions" : permission
+    }
+
     # 4. 새로운 토큰 쌍 발급
     return {
-        "access_token": create_user_access_token(user_id),
-        "refresh_token": create_user_refresh_token(user_id),
+        "access_token": create_user_access_token(data),
+        "refresh_token": create_user_refresh_token(data),
         "token_type": "bearer",
     }
 

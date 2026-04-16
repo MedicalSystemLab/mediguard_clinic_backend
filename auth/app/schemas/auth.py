@@ -29,9 +29,6 @@ class PatientLogin(BaseModel):
     patient_number: str
     patient_password: str
 
-class RefreshToken(BaseModel):
-    refresh_token: str
-
 class UserBase(BaseModel):
     user_id: uuid.UUID
 

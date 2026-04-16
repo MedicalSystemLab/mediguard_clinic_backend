@@ -25,6 +25,7 @@ async def get_current_user_id(
         )
     
     token = authorization.split(" ")[1]
+
     
     try:
         payload = jwt.decode(
@@ -33,9 +34,10 @@ async def get_current_user_id(
             algorithms=[settings.ALGORITHM],
             options={"verify_signature": False} 
         )
+
         token_data = TokenPayload(**payload)
 
-        if token_data.type != "access":
+        if token_data.type not in ["access", "refresh"]:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token type",

@@ -143,7 +143,7 @@ def mask_email(email: str) -> str:
 def create_user_access_token(data: dict | Any, expires_delta: timedelta | None = None) -> str:
     """Access Token 생성"""
 
-    sub = data.get("sub")
+    sub = data.get("userId")
     permissions = data.get("permissions")
 
     if expires_delta:
@@ -163,7 +163,7 @@ def create_user_access_token(data: dict | Any, expires_delta: timedelta | None =
 def create_user_refresh_token(data: dict | Any, expires_delta: timedelta | None = None) -> str:
     """Refresh Token 생성"""
 
-    sub = data.get("sub")
+    sub = data.get("userId")
     permissions = data.get("permissions")
 
     if expires_delta:
