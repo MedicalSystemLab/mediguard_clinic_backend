@@ -9,6 +9,9 @@ from common.core.auth import get_current_patient_id
 from auth.app.schemas.auth import Token, PatientLogin, PatientRegister
 from auth.app.api.commons.crud_user import patient as crud_patient
 from auth.app.schemas.auth import Patient as PatientSchema
+from auth.app.models.auth import User
+from clinical_manage.app.models.info import Ward, Department
+
 
 router = APIRouter()
 
@@ -18,7 +21,25 @@ async def register(
         db: AsyncSession = Depends(get_db),
         patient_in: PatientRegister,
 ):
-    user = await crud_patient.get_by_patient_number(db, patient_number=patient_in.patient_number)
+    user = await crud_patient.get_by_patient_number(db, patient_number=patient_in.number)
+
+    if patient_in.depart:
+        depart = db.query(Department).filter(Department.department_id == patient_in.depart).first()
+
+        if not depart:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="입력된 부서가 존재하지 않습니다.",
+            )
+
+    if patient_in.admitted_ward:
+        ward = db.query(Ward).filter(Ward.ward_id == patient_in.admitted_ward).first()
+
+        if not ward:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="입력된 입원병동이 존재하지 않습니다.",
+            )
 
     if user:
         raise HTTPException(
@@ -28,12 +49,15 @@ async def register(
 
     # Publish user.registered event to Kafka
     event = PatientRegisteredEvent(
-        patient_number=patient_in.patient_number,
-        patient_name=patient_in.patient_name,
-        patient_password=patient_in.patient_password,
-        patient_sex=patient_in.patient_sex,
-
+        number = patient_in.number,
+        name = patient_in.name,
+        birth = patient_in.birth,
+        gender = patient_in.gender,
+        depart = patient_in.depart,
+        admitted_ward = patient_in.admitted_ward,
+        manage_practitioner = patient_in.manage_practitioner,
     )
+
     await publish_event(
         topic=settings.KAFKA_TOPIC_AUTH,
         event=event.model_dump(),

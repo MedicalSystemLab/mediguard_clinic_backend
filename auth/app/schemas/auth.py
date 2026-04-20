@@ -6,10 +6,13 @@ class UserRegister(BaseModel):
     password: str
 
 class PatientRegister(BaseModel):
-    patient_number: str
-    patient_name: str
-    patient_password: str
-    patient_sex: str
+    number: str
+    name: str
+    birth: str
+    gender: str | None = "U"
+    depart: str | None = None
+    admitted_ward: str | None = None
+    manage_practitioner: str | None = None
 
 class Token(BaseModel):
     access_token: str

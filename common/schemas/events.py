@@ -12,10 +12,13 @@ class UserRegisteredEvent(BaseModel):
 class PatientRegisteredEvent(BaseModel):
     """Patient registration event schema"""
     event_type: str = "patient.registered"
-    patient_number: str
-    patient_name: str
-    patient_password: str
-    patient_sex: str
+    number: str
+    name: str
+    birth: str
+    gender: str | None
+    depart: str | None
+    admitted_ward: str | None
+    manage_practitioner: str | None
 
 class BiosignalEvent(BaseModel):
     """Biosignal event schema (template for future use)"""

@@ -2,6 +2,7 @@ import logging
 import uuid
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.future import select
 from common.db.session import SessionLocal
 from clinical_manage.app.models.info import PatientProfile
@@ -35,26 +36,43 @@ async def handle_user_registered(event_data: dict):
         raise
 
 async def handle_patient_registered(event_data: dict):
+    number = event_data.get('number')
+    name = event_data.get('name')
+    gender = event_data.get('gender')
+    birth = event_data.get('birth')
+    department = event_data.get('depart')
+    ward = event_data.get('admitted_ward')
+    manage_practitioner = event_data.get('manage_practitioner')
+
     try:
-        patient_number = event_data.get('patient_number')
-        patient_name = event_data.get('patient_name')
-        patient_password = event_data.get('patient_password')
-        patient_sex = event_data.get('patient_sex')
+
 
         async with SessionLocal() as db:
-            # Check if patient profile already exists
+            try:
+                patient_account = Patient(
+                    patient_number=number,
+                    patient_password=get_password_hash(birth),
+                )
+                db.add(patient_account)
+                await db.flush()
+
+                patient_profile = PatientProfile(
+                    patient_id=patient_account.patient_id,
+                    patient_name=name,
+                    gender=gender,
+                    birth=birth,
+                    department_id=department,
+                    admitted_ward_id=ward,
+                    manage_practitioner_id=manage_practitioner,
+                )
+                db.add(patient_profile)
+                await db.commit()
 
 
-            # Create new PatientProfile
-            # Note: These fields should be updated later by clinical staff
-            patient_profile = Patient(
-                patient_number=patient_number,
-                patient_password=get_password_hash(patient_password),
-            )
-
-            db.add(patient_profile)
-            await db.commit()
-            await db.refresh(patient_profile)
+            except SQLAlchemyError as e:
+                await db.rollback()
+                logger.error(f"Failed to create patient profile: {e}")
+                raise
 
     except Exception as e:
         logger.error(f"Failed to handle user.registered event: {e}", exc_info=True)
