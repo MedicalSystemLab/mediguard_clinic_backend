@@ -31,6 +31,8 @@ class PractitionerProfiles(ClinicBase):
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
+    __table_args__ = {"schema": "clinical_manage"}
+
 # 병원 부서 정보 테이블
 class Department(ClinicBase):
     __tablename__ = "department"
@@ -43,6 +45,8 @@ class Department(ClinicBase):
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = {"schema": "clinical_manage"}
 
 
 class Ward(ClinicBase):
