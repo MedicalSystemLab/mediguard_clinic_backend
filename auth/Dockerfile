@@ -35,6 +35,7 @@ COPY --from=builder /app/.venv /app/.venv
 # Assuming context is project root according to docker-compose.yml
 COPY common/ /app/common/
 COPY auth/ /app/auth/
+COPY clinical_manage /app/clinical_manage/
 
 RUN chmod +rx /app/auth/entrypoint.sh
 

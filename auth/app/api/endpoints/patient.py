@@ -61,7 +61,7 @@ async def register(
     await publish_event(
         topic=settings.KAFKA_TOPIC_AUTH,
         event=event.model_dump(),
-        key=patient_in.patient_number
+        key=patient_in.number
     )
 
     return
