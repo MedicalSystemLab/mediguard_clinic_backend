@@ -20,17 +20,30 @@ class PatientRegisteredEvent(BaseModel):
     admitted_ward: str | None
     manage_practitioner: str | None
 
-class BiosignalEvent(BaseModel):
+class BiosignalECGEvent(BaseModel):
     """Biosignal event schema (template for future use)"""
-    event_type: str
+    event_type: str = "biosignal.ECG.received"
     patient_id: str
-    data: dict
-    timestamp: datetime
+    signal_type: str
+    signal: list
+    timestamp: int
 
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+class BiosignalPPGEvent(BaseModel):
+    """Biosignal event schema (template for future use)"""
+    event_type: str = "biosignal.PPG.received"
+    patient_id: str
+    signal_type: str
+    signal: list
+    timestamp: int
+
+class BiosignalRESPEvent(BaseModel):
+    """Biosignal event schema (template for future use)"""
+    event_type: str = "biosignal.RESP.received"
+    patient_id: str
+    signal_type: str
+    signal: list
+    timestamp: int
+
 
 class ClinicalEvent(BaseModel):
     """Clinical event schema (template for future use)"""

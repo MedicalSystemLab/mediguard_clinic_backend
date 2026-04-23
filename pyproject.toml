@@ -9,7 +9,7 @@ dependencies = [
     "python-jose>=3.5.0",
     "argon2-cffi>=23.1.0",
     "pycryptodome>=3.20.0",
-    "aiokafka>=0.12.0",
+    "aiokafka>=0.12.0,<0.13.0",
     "redis>=5.0.1",
     "pydantic-settings>=2.2.1",
     "python-dotenv>=1.0.1",
@@ -19,4 +19,5 @@ dependencies = [
     "uvicorn>=0.42.0",
     "uuid6>=2025.0.1",
     "zstandard>=0.25.0",
+    "faust-streaming[rocksdb]>=0.11.0",
 ]

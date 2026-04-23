@@ -6,5 +6,6 @@ include:
   - ./kafka/docker-compose.yml
   - ./redis/docker-compose.yml
   - ./auth/docker-compose.yml
-  - ./consumer/docker-compose.yml
+  - ./consumer_db/docker-compose.yml
+  - ./consumer_analysis/docker-compose.yml
   - ./biosignal/docker-compose.yml

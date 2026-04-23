@@ -20,7 +20,7 @@ async def health_check():
     """
     return {
         "status": "ok",
-        "service": "mediguard-consumer",
+        "service": "mediguard-db-consumer",
         "timestamp": datetime.utcnow().isoformat()
     }
 
@@ -32,7 +32,7 @@ async def liveness_check():
     """
     return {
         "status": "alive",
-        "service": "mediguard-consumer"
+        "service": "mediguard-db-consumer"
     }
 
 
@@ -46,7 +46,7 @@ async def readiness_check():
     return {
         "status": "ready" if is_ready else "not_ready",
         "consumer_status": consumer_metrics["status"],
-        "service": "mediguard-consumer"
+        "service": "mediguard-db-consumer"
     }
 
 

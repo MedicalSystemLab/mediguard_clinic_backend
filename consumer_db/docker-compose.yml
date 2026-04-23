@@ -1,12 +1,12 @@
 services:
-  consumer:
+  consumer_db:
     build:
       context: ..
-      dockerfile: consumer/Dockerfile
-    container_name: mediguard-consumer
+      dockerfile: consumer_db/Dockerfile
+    container_name: mediguard-consumer-db
     restart: always
     ports:
-      - "8000"  # Expose health check API on port 8003
+      - "8000"
     env_file:
       - ../.env
     environment:
@@ -23,4 +23,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
