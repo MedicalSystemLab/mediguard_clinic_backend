@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status, Depends
 
-from biosignal.app.schemas.biosignal import ECGBiosignal
+from biosignal.app.schemas.biosignal import ECGBiosignal, PPGBiosignal, RESPBiosignal
 from common.core.config import settings
 from common.core.auth import get_current_patient_id
 from common.core.kafka_producer import publish_event
@@ -37,7 +37,7 @@ async def collect_ecg_signal(
 async def collect_ppg_signal(
         *,
         patient_id: str = Depends(get_current_patient_id),
-        signal_in: ECGBiosignal
+        signal_in: PPGBiosignal
 ):
     event = BiosignalPPGEvent(
         patient_id=patient_id,
@@ -58,7 +58,7 @@ async def collect_ppg_signal(
 async def collect_ecg_signal(
         *,
         patient_id: str = Depends(get_current_patient_id),
-        signal_in: ECGBiosignal
+        signal_in: RESPBiosignal
 ):
     event = BiosignalRESPEvent(
         patient_id=patient_id,
