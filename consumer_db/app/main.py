@@ -11,7 +11,7 @@ import uvicorn
 
 from common.core.kafka_consumer import KafkaConsumerManager, set_metrics_updater
 from consumer_db.app.handlers.auth_handler import handle_user_registered, handle_patient_registered
-from consumer_db.app.handlers.biosignal_handler import handle_biosignal_event
+from consumer_db.app.handlers.biosignal_handler import handle_ecg_event, handle_ppg_event, handle_resp_event
 from consumer_db.app.handlers.clinical_handler import handle_clinical_event
 from consumer_db.app.api.health import router as health_router, update_metrics, increment_metric
 from common.core.config import settings

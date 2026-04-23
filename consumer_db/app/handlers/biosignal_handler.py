@@ -12,6 +12,7 @@ async def handle_ecg_event(event_data: dict):
         event_data: Event payload
     """
     event = BiosignalECGEvent(**event_data)
+    print("asdfasdf")
     logger.info(
         f"ECG analysis - patient_id: {event.patient_id}, "
         f"signal_length: {len(event.signal)}, "
