@@ -41,7 +41,7 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_biosignal_biosignals_patient_id'), 'biosignals', ['patient_id'], unique=False, schema='biosignal')
     op.execute(
-        "SELECT create_hypertable('biosignal.biosignal_metrics', 'recorded_at', chunk_time_interval => INTERVAL '1 day', if_not_exists => TRUE)")
+        "SELECT create_hypertable('biosignal.biosignal_metrics', 'created_at', chunk_time_interval => INTERVAL '1 day', if_not_exists => TRUE)")
     op.execute(
         "SELECT create_hypertable('biosignal.biosignals', 'recorded_at', chunk_time_interval => INTERVAL '1 day', if_not_exists => TRUE)")
     # ### end Alembic commands ###
