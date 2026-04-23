@@ -4,6 +4,9 @@ import uuid
 class UserRegister(BaseModel):
     username: str
     password: str
+    practitioner_name: str
+
+
 
 class PatientRegister(BaseModel):
     number: str

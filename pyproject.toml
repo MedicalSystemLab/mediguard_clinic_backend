@@ -17,4 +17,6 @@ dependencies = [
     "sqlalchemy>=2.0.29",
     "psycopg2-binary>=2.9.11",
     "uvicorn>=0.42.0",
+    "uuid6>=2025.0.1",
+    "zstandard>=0.25.0",
 ]

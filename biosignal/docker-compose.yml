@@ -1,0 +1,21 @@
+services:
+  biosignal_service:
+    build:
+      context: ..
+      dockerfile: ./biosignal/Dockerfile
+    container_name: biosignal_service
+    restart: always
+    expose:
+      - "8000"
+    env_file: ../.env
+    environment:
+      - POSTGRES_SERVER=postgres_db
+      - REDIS_HOST=redis_db
+      - KAFKA_BOOTSTRAP_SERVERS=redpanda:29092
+    volumes:
+      - ./app:/app/biosignal/app
+      - ../common:/app/common
+      - ./alembic.ini:/app/biosignal/alembic.ini
+      - ./alembic:/app/biosignal/alembic
+      - ./entrypoint.sh:/app/biosignal/entrypoint.sh
+    entrypoint: ["/app/biosignal/entrypoint.sh"]

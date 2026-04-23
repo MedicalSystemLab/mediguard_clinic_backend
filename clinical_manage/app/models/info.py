@@ -26,7 +26,7 @@ class PractitionerProfiles(ClinicBase):
 
     practitioner_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, nullable=False, index=True)
-    # practitioner_name: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    practitioner_name: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     rule: Mapped[PractitionerRoleEnum] = mapped_column(Enum(PractitionerRoleEnum), nullable=False, default=PractitionerRoleEnum.UNSPECIFIED)
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)

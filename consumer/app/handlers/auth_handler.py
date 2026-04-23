@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.future import select
 from common.db.session import SessionLocal
-from clinical_manage.app.models.info import PatientProfile
+from clinical_manage.app.models.info import PatientProfile, PractitionerProfiles, GenderEnum
 from auth.app.models.auth import User, Patient
 from common.core.security import get_password_hash
 
@@ -28,8 +28,11 @@ async def handle_user_registered(event_data: dict):
 
             user = User(username=username, password_hash=get_password_hash(password), is_active=True)
             db.add(user)
+            await db.flush()
+
+            profile = PractitionerProfiles(practitioner_id=user.user_id)
+            db.add(profile)
             await db.commit()
-            await db.refresh(user)
 
     except Exception as e:
         logger.error(f"Failed to handle user.registered event: {e}", exc_info=True)

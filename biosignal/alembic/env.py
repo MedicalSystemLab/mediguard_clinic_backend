@@ -1,9 +1,19 @@
 from logging.config import fileConfig
-
-from sqlalchemy import engine_from_config
+import sys, os
+from sqlalchemy import engine_from_config, pool, text
 from sqlalchemy import pool
 
 from alembic import context
+
+# this is the Alembic Config object, which provides
+# access to the values within the .ini file in use.
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
+from common.core.config import settings
+from biosignal.app.models.base import BiosignalBase
+from biosignal.app.models.biosignals import Biosignals, BiosignalMatrics
+
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -18,7 +28,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = None
+target_metadata = BiosignalBase.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -49,6 +59,11 @@ def run_migrations_offline() -> None:
     with context.begin_transaction():
         context.run_migrations()
 
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "table":
+        if object.schema not in ["biosignal"]:
+            return False
+    return True
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
@@ -57,18 +72,29 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    sync_url = settings.DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
+
+    configuration = config.get_section(config.config_ini_section, {})
+    configuration["sqlalchemy.url"] = sync_url
+
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            version_table_schema="biosignal",
+            include_schemas=True,
+            include_object=include_object
         )
-
         with context.begin_transaction():
+            # 스키마가 없는 경우 생성 (PostgreSQL)
+            connection.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE"))
+            connection.execute(text("CREATE SCHEMA IF NOT EXISTS biosignal"))
             context.run_migrations()
 
 

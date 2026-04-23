@@ -3,6 +3,9 @@ import hashlib
 import os
 from datetime import datetime, timedelta, UTC
 from typing import Any
+import array
+import zstandard as zstd
+
 
 import json
 import argon2
@@ -50,6 +53,37 @@ def get_email_hash(email: str) -> str:
         type=argon2.low_level.Type.ID
     )
     return base64.b64encode(hash_value).decode('utf-8')
+
+
+def compress_and_encrypt_int_list(int_list: list[int]) -> bytes:
+    """list[float]를 바이너리화 -> Zstandard 압축 -> AES-256-GCM 암호화"""
+    try:
+        key = base64.b64decode(settings.ENCRYPTION_KEY)
+    except Exception as e:
+        raise ValueError(f"Invalid ENCRYPTION_KEY format: {e}")
+
+    if len(key) != 32:
+        raise ValueError(f"Invalid key length: {len(key)} bytes.")
+
+    byte_data = array.array('h', int_list).tobytes()
+
+    # ---------------------------------------------------------
+    # 2. 압축 (반드시 암호화 전에 수행!)
+    # ---------------------------------------------------------
+    compressor = zstd.ZstdCompressor(level=3)
+    compressed_data = compressor.compress(byte_data)
+
+    # ---------------------------------------------------------
+    # 3. 암호화 진행 (압축된 데이터 기반)
+    # ---------------------------------------------------------
+    nonce = get_random_bytes(12)
+    cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
+
+    # byte_data가 아닌 compressed_data를 암호화합니다.
+    ciphertext, tag = cipher.encrypt_and_digest(compressed_data)
+
+    # 최종 bytes 반환 (DB의 LargeBinary 컬럼으로 직행)
+    return nonce + tag + ciphertext
 
 def encrypt_data(data: str) -> bytes:
     """AES-256-GCM 데이터 암호화"""
