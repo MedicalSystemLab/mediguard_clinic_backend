@@ -55,7 +55,7 @@ async def run_consumer():
     # Add more handlers as needed
     consumer_manager.register_handler("biosignal.ECG.received", handle_ecg_event)
     consumer_manager.register_handler("biosignal.PPG.received", handle_ppg_event)
-    consumer_manager.register_handler("biosignal.RESP.received", handle_reso_event)
+    consumer_manager.register_handler("biosignal.RESP.received", handle_resp_event)
     # consumer_manager.register_handler("clinical.update", handle_clinical_event)
 
     # Subscribe to topics
