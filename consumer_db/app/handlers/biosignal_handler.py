@@ -1,11 +1,11 @@
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.future import select
 from common.db.session import SessionLocal
-from common.core.security import compress_and_encrypt_int_list, compress_and_encrypt_float_list
+from common.core.security import compress_and_encrypt_data_list
 from clinical_manage.app.models.info import PatientProfile, PractitionerProfiles, GenderEnum
 from auth.app.models.auth import User, Patient
 from biosignal.app.models.biosignals import Biosignals
@@ -27,23 +27,19 @@ async def handle_ecg_event(event_data: dict):
     """
     logger.info(f"Biosignal event received: {event_data.get('event_type')}")
     event = BiosignalECGEvent(**event_data)
-    compressed_and_encrypted_signal = compress_and_encrypt_int_list(event.signal)
+    recorded_at_dt = datetime.fromtimestamp(event.timestamp / 1000, tz=timezone.utc)
+
+    compressed_and_encrypted_signal = compress_and_encrypt_data_list("h", event.signal)
     try:
         async with SessionLocal() as db:
-            signal = Biosignals(patient_id=event.patient_id, biosignal_data=compressed_and_encrypted_signal, biosignal_type=event.signal_type, recorded_at=event.timestamp)
+            signal = Biosignals(patient_id=event.patient_id, biosignal_data=compressed_and_encrypted_signal, biosignal_type=event.signal_type, recorded_at=recorded_at_dt)
             db.add(signal)
             await db.commit()
-
-
 
     except Exception as e:
         logger.error(f"Failed to handle biosignal event: {e}", exc_info=True)
         raise
 
-
-
-    # TODO: Implement biosignal event processing logic
-    pass
 
 
 async def handle_ppg_event(event_data: dict):
@@ -53,15 +49,20 @@ async def handle_ppg_event(event_data: dict):
     Args:
         event_data: Event payload
     """
-    event = BiosignalPPGEvent(**event_data)
-    logger.info(
-        f"ECG analysis - patient_id: {event.patient_id}, "
-        f"signal_length: {len(event.signal)}, "
-        f"timestamp: {event.timestamp}"
-    )
     logger.info(f"Biosignal event received: {event_data.get('event_type')}")
-    # TODO: Implement biosignal event processing logic
-    pass
+    event = BiosignalPPGEvent(**event_data)
+    recorded_at_dt = datetime.fromtimestamp(event.timestamp / 1000, tz=timezone.utc)
+
+    compressed_and_encrypted_signal = compress_and_encrypt_data_list("i", event.signal)
+    try:
+        async with SessionLocal() as db:
+            signal = Biosignals(patient_id=event.patient_id, biosignal_data=compressed_and_encrypted_signal, biosignal_type=event.signal_type, recorded_at=recorded_at_dt)
+            db.add(signal)
+            await db.commit()
+
+    except Exception as e:
+        logger.error(f"Failed to handle biosignal event: {e}", exc_info=True)
+        raise
 
 
 async def handle_resp_event(event_data: dict):
@@ -71,12 +72,17 @@ async def handle_resp_event(event_data: dict):
     Args:
         event_data: Event payload
     """
-    event = BiosignalRESPEvent(**event_data)
-    logger.info(
-        f"ECG analysis - patient_id: {event.patient_id}, "
-        f"signal_length: {len(event.signal)}, "
-        f"timestamp: {event.timestamp}"
-    )
     logger.info(f"Biosignal event received: {event_data.get('event_type')}")
-    # TODO: Implement biosignal event processing logic
-    pass
+    event = BiosignalRESPEvent(**event_data)
+    recorded_at_dt = datetime.fromtimestamp(event.timestamp / 1000, tz=timezone.utc)
+
+    compressed_and_encrypted_signal = compress_and_encrypt_data_list("f", event.signal)
+    try:
+        async with SessionLocal() as db:
+            signal = Biosignals(patient_id=event.patient_id, biosignal_data=compressed_and_encrypted_signal, biosignal_type=event.signal_type, recorded_at=recorded_at_dt)
+            db.add(signal)
+            await db.commit()
+
+    except Exception as e:
+        logger.error(f"Failed to handle biosignal event: {e}", exc_info=True)
+        raise
