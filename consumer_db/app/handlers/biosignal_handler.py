@@ -24,12 +24,12 @@ async def handle_ecg_ppg_event(event_data: dict):
     event = BiosignalECGPPGEvent(**event_data)
     recorded_at_dt = datetime.fromtimestamp(event.timestamp / 1000, tz=timezone.utc)
 
-    conpressed_and_encrypted_ecg_signal = compress_and_encrypt_data_list("h", event.signal)
+    conpressed_and_encrypted_ecg_signal = compress_and_encrypt_data_list("h", event.ecg)
     conpressed_and_encrypted_ppg_signal = compress_and_encrypt_data_list("i", event.ppg)
     try:
         async with SessionLocal() as db:
-            ecg_signal = Biosignals(patient_id=event.patient_id, biosignal_data=conpressed_and_encrypted_ecg_signal, biosignal_type='ecg', recorded_at=recorded_at_dt)
-            ppg_signal = Biosignals(patient_id=event.patient_id, biosignal_data=conpressed_and_encrypted_ppg_signal, biosignal_type='ppg', recorded_at=recorded_at_dt)
+            ecg_signal = Biosignals(patient_id=event.patient_id, biosignal_data=conpressed_and_encrypted_ecg_signal, biosignal_type='ECG', recorded_at=recorded_at_dt)
+            ppg_signal = Biosignals(patient_id=event.patient_id, biosignal_data=conpressed_and_encrypted_ppg_signal, biosignal_type='PPG', recorded_at=recorded_at_dt)
             db.add(ecg_signal)
             db.add(ppg_signal)
             await db.commit()
@@ -45,7 +45,6 @@ async def handle_ecg_event(event_data: dict):
     Args:
         event_data: Event payload
     """
-    logger.info(f"Biosignal event received: {event_data.get('event_type')}")
     event = BiosignalECGEvent(**event_data)
     recorded_at_dt = datetime.fromtimestamp(event.timestamp / 1000, tz=timezone.utc)
 
@@ -69,7 +68,6 @@ async def handle_ppg_event(event_data: dict):
     Args:
         event_data: Event payload
     """
-    logger.info(f"Biosignal event received: {event_data.get('event_type')}")
     event = BiosignalPPGEvent(**event_data)
     recorded_at_dt = datetime.fromtimestamp(event.timestamp / 1000, tz=timezone.utc)
 
@@ -92,7 +90,6 @@ async def handle_resp_event(event_data: dict):
     Args:
         event_data: Event payload
     """
-    logger.info(f"Biosignal event received: {event_data.get('event_type')}")
     event = BiosignalRESPEvent(**event_data)
     recorded_at_dt = datetime.fromtimestamp(event.timestamp / 1000, tz=timezone.utc)
 
