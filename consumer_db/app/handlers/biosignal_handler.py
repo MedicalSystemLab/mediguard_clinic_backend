@@ -14,14 +14,14 @@ from common.core.security import get_password_hash
 
 
 
-from common.schemas.events import BiosignalECGEvent, BiosignalPPGEvent, BiosignalRESPEvent
+from common.schemas.events import BiosignalECGEvent, BiosignalPPGEvent, BiosignalRESPEvent, BiosignalECGPPGEvent
 
 logger = logging.getLogger(__name__)
 
 
 async def handle_ecg_ppg_event(event_data: dict):
     logger.info(f"Biosignal event received: {event_data.get('event_type')}")
-    event = BiosignalECGEvent(**event_data)
+    event = BiosignalECGPPGEvent(**event_data)
     recorded_at_dt = datetime.fromtimestamp(event.timestamp / 1000, tz=timezone.utc)
 
     conpressed_and_encrypted_ecg_signal = compress_and_encrypt_data_list("h", event.signal)
