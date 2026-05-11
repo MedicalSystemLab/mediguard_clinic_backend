@@ -49,6 +49,12 @@ async def analyze_resp(event: BiosignalRESPEvent):
     )
     # TODO: Connect ML inference pipeline (respiratory rate calculation)
 
+@_register("biosignal.BP.init", BiosignalECGEvent)
+async def analyze_bp_init(event: BiosignalECGEvent):
+    logger.info(
+        f"BP init - data: {event}, "
+    )
+
 
 @app.agent(biosignal_topic)
 async def process_biosignal(stream):

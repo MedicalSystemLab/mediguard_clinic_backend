@@ -1,10 +1,10 @@
 from fastapi import APIRouter, status, Depends
 
-from biosignal.app.schemas.biosignal import ECGBiosignal, PPGBiosignal, RESPBiosignal, ECGAndPPGSignal
+from biosignal.app.schemas.biosignal import ECGBiosignal, PPGBiosignal, RESPBiosignal, ECGAndPPGSignal, BPAnalysisInitParams
 from common.core.config import settings
 from common.core.auth import get_current_patient_id
 from common.core.kafka_producer import publish_event
-from common.schemas.events import BiosignalECGEvent, BiosignalPPGEvent, BiosignalRESPEvent, BiosignalECGPPGEvent
+from common.schemas.events import BiosignalECGEvent, BiosignalPPGEvent, BiosignalRESPEvent, BiosignalECGPPGEvent, BiosignalBPInitEvent
 
 router = APIRouter()
 
@@ -74,7 +74,7 @@ async def collect_ppg_signal(
     return
 
 @router.post("/resp", status_code=status.HTTP_200_OK)
-async def collect_ecg_signal(
+async def collect_resp_signal(
         *,
         patient_id: str = Depends(get_current_patient_id),
         signal_in: RESPBiosignal
@@ -94,12 +94,19 @@ async def collect_ecg_signal(
 
     return
 
+@router.post("/bp/init", status_code=status.HTTP_201_CREATED)
+async def init_bp_measurement(
+        *,
+        patient_id: str = Depends(get_current_patient_id),
+        bp_init_in: BPAnalysisInitParams
+):
+    event = BiosignalBPInitEvent(
+        patient_id=patient_id,
+        **bp_init_in.model_dump(),
+    )
 
-@router.post("/ppg")
-def collect_ppg_signal():
-    pass
-
-
-@router.post("/resp")
-def collect_resp_signal():
-    pass
+    await publish_event(
+        topic=settings.KAFKA_TOPIC_BIOSIGNAL,
+        event=event.model_dump(),
+        key=patient_id
+    )

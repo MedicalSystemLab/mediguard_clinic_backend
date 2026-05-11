@@ -34,5 +34,34 @@ class BiosignalMatrics(BiosignalBase):
                                                   primary_key=True)
     value : Mapped[float] = mapped_column(Float, nullable=False)
 
+class BPInitLog(BiosignalBase):
+    __tablename__ = "bp_init_log"
+    __table_args__ = {"schema": "biosignal"}
+
+    log_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid6.uuid7)
+    patient_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
+
+    pttf: Mapped[float] = mapped_column(Float, nullable=False)
+    pttd: Mapped[float] = mapped_column(Float, nullable=False)
+    dPtt: Mapped[float] = mapped_column(Float, nullable=False)
+    dPttNorm: Mapped[float] = mapped_column(Float, nullable=False)
+
+    upSlope: Mapped[float] = mapped_column(Float, nullable=False)
+    pw50: Mapped[float] = mapped_column(Float, nullable=False)
+    diaSlope: Mapped[float] = mapped_column(Float, nullable=False)
+    auc: Mapped[float] = mapped_column(Float, nullable=False)
+    acdc: Mapped[float] = mapped_column(Float, nullable=False)
+
+    # HRV & Quality (2)
+    rrMean: Mapped[float] = mapped_column(Float, nullable=False)
+    rrStd: Mapped[float] = mapped_column(Float, nullable=False)
+
+    # BaseValue (2)
+    baseSBP: Mapped[float] = mapped_column(Float, nullable=False)
+    baseDBP: Mapped[float] = mapped_column(Float, nullable=False)
+
+    started_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    ended_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
 

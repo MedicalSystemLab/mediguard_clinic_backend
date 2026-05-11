@@ -25,7 +25,7 @@ class BiosignalECGPPGEvent(BaseModel):
     event_type: str = "biosignal.ECG_PPG.received"
     patient_id: str
     ecg: list
-    ppg: list
+    ppg: list | None = None
     timestamp: int
 
 class BiosignalECGEvent(BaseModel):
@@ -51,6 +51,35 @@ class BiosignalRESPEvent(BaseModel):
     signal_type: str
     signal: list
     timestamp: int
+
+class BiosignalBPInitEvent(BaseModel):
+    """Biosignal event schema (template for future use)"""
+    event_type: str = "biosignal.BP.init"
+    patient_id: str
+    pttf: float
+    pttd: float
+    dPtt: float
+    dPttNorm: float
+
+    # Morphology (5)
+    upSlope: float
+    pw50: float
+    diaSlope: float
+    auc: float
+    acdc: float
+
+    # HRV & Quality (3)
+    rrMean: float
+    rrMean: float
+    rrStd: float
+
+    # BaseValue (2)
+    baseSBP: float
+    baseDBP: float
+
+    # 데이터 역 추적용 시간 값
+    started_at: int
+    ended_at: int
 
 
 class ClinicalEvent(BaseModel):
