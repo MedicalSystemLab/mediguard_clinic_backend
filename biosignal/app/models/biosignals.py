@@ -24,6 +24,7 @@ class Biosignals(BiosignalBase):
 
 
 class BiosignalMatrics(BiosignalBase):
+    # BPM, temp, spo2, rr(rpm)
     __tablename__ = "biosignal_metrics"
     __table_args__ = {"schema": "biosignal"}
 
@@ -32,7 +33,6 @@ class BiosignalMatrics(BiosignalBase):
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False,
                                                   primary_key=True)
     value : Mapped[float] = mapped_column(Float, nullable=False)
-
 
 
 

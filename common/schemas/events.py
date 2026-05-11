@@ -20,6 +20,14 @@ class PatientRegisteredEvent(BaseModel):
     admitted_ward: str | None
     manage_practitioner: str | None
 
+class BiosignalECGPPGEvent(BaseModel):
+    """Biosignal event schema (template for future use)"""
+    event_type: str = "biosignal.ECG_PPG.received"
+    patient_id: str
+    ecg: list
+    ppg: list
+    timestamp: int
+
 class BiosignalECGEvent(BaseModel):
     """Biosignal event schema (template for future use)"""
     event_type: str = "biosignal.ECG.received"

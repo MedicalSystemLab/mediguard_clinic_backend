@@ -1,5 +1,10 @@
 from pydantic import BaseModel
 
+class ECGAndPPGSignal(BaseModel):
+    ecg: list[int]
+    ppg: list[int]
+    recorded_at: int
+
 class ECGBiosignal(BaseModel):
     signal: list[int]
     recorded_at: int

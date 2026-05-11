@@ -11,7 +11,7 @@ import uvicorn
 
 from common.core.kafka_consumer import KafkaConsumerManager, set_metrics_updater
 from consumer_db.app.handlers.auth_handler import handle_user_registered, handle_patient_registered
-from consumer_db.app.handlers.biosignal_handler import handle_ecg_event, handle_ppg_event, handle_resp_event
+from consumer_db.app.handlers.biosignal_handler import handle_ecg_event, handle_ppg_event, handle_resp_event, handle_ecg_ppg_event
 from consumer_db.app.handlers.clinical_handler import handle_clinical_event
 from consumer_db.app.api.health import router as health_router, update_metrics, increment_metric
 from common.core.config import settings
@@ -56,6 +56,7 @@ async def run_consumer():
     consumer_manager.register_handler("biosignal.ECG.received", handle_ecg_event)
     consumer_manager.register_handler("biosignal.PPG.received", handle_ppg_event)
     consumer_manager.register_handler("biosignal.RESP.received", handle_resp_event)
+    consumer_manager.register_handler("biosignal.ECG_PPG.received", handle_ecg_ppg_event)
     # consumer_manager.register_handler("clinical.update", handle_clinical_event)
 
     # Subscribe to topics

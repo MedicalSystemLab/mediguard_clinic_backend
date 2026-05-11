@@ -1,16 +1,29 @@
 from fastapi import APIRouter, status, Depends
 
-from biosignal.app.schemas.biosignal import ECGBiosignal, PPGBiosignal, RESPBiosignal
+from biosignal.app.schemas.biosignal import ECGBiosignal, PPGBiosignal, RESPBiosignal, ECGAndPPGSignal
 from common.core.config import settings
 from common.core.auth import get_current_patient_id
 from common.core.kafka_producer import publish_event
-from common.schemas.events import BiosignalECGEvent, BiosignalPPGEvent, BiosignalRESPEvent
+from common.schemas.events import BiosignalECGEvent, BiosignalPPGEvent, BiosignalRESPEvent, BiosignalECGPPGEvent
 
 router = APIRouter()
 
 @router.get("/health", status_code=status.HTTP_200_OK)
 def health_check():
     return {"status": "ok"}
+
+@router.post("/ecg_ppg", status_code=status.HTTP_200_OK)
+async def collect_ecg_ppg_signal(
+        *,
+        patient_id: str = Depends(get_current_patient_id),
+        signal_in: ECGAndPPGSignal
+):
+    event = BiosignalECGPPGEvent(
+        patient_id=patient_id,
+        ecg=signal_in.ecg,
+        ppg=signal_in.ppg,
+        timestamp=signal_in.recorded_at
+    )
 
 @router.post("/ecg", status_code=status.HTTP_200_OK)
 async def collect_ecg_signal(

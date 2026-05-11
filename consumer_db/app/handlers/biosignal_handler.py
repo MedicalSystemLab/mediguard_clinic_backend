@@ -9,6 +9,7 @@ from common.core.security import compress_and_encrypt_data_list
 from clinical_manage.app.models.info import PatientProfile, PractitionerProfiles, GenderEnum
 from auth.app.models.auth import User, Patient
 from biosignal.app.models.biosignals import Biosignals
+from biosignal.app.models.biosignal_enum import BiosignalTypeEnum, MatricTypeEnum
 from common.core.security import get_password_hash
 
 
@@ -17,6 +18,25 @@ from common.schemas.events import BiosignalECGEvent, BiosignalPPGEvent, Biosigna
 
 logger = logging.getLogger(__name__)
 
+
+async def handle_ecg_ppg_event(event_data: dict):
+    logger.info(f"Biosignal event received: {event_data.get('event_type')}")
+    event = BiosignalECGEvent(**event_data)
+    recorded_at_dt = datetime.fromtimestamp(event.timestamp / 1000, tz=timezone.utc)
+
+    conpressed_and_encrypted_ecg_signal = compress_and_encrypt_data_list("h", event.signal)
+    conpressed_and_encrypted_ppg_signal = compress_and_encrypt_data_list("i", event.ppg)
+    try:
+        async with SessionLocal() as db:
+            ecg_signal = Biosignals(patient_id=event.patient_id, biosignal_data=conpressed_and_encrypted_ecg_signal, biosignal_type='ecg', recorded_at=recorded_at_dt)
+            ppg_signal = Biosignals(patient_id=event.patient_id, biosignal_data=conpressed_and_encrypted_ppg_signal, biosignal_type='ppg', recorded_at=recorded_at_dt)
+            db.add(ecg_signal)
+            db.add(ppg_signal)
+            await db.commit()
+
+    except Exception as e:
+        logger.error(f"Failed to handle biosignal event: {e}", exc_info=True)
+        raise
 
 async def handle_ecg_event(event_data: dict):
     """
