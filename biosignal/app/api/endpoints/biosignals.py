@@ -25,6 +25,12 @@ async def collect_ecg_ppg_signal(
         timestamp=signal_in.recorded_at
     )
 
+    await publish_event(
+        topic=settings.KAFKA_TOPIC_BIOSIGNAL,
+        event=event.model_dump(),
+        key=patient_id
+    )
+
 @router.post("/ecg", status_code=status.HTTP_200_OK)
 async def collect_ecg_signal(
         *,
