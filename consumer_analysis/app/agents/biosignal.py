@@ -44,9 +44,6 @@ async def process_biosignal(stream):
             logger.warning(f"Failed to decode biosignal message: {e}")
             continue
 
-        logger.info(f"Received payload: {payload}")
-
-
         event_type = payload.get('event_type')
         if event_type != 'biosignal.ECG_PPG.received':
             logger.debug(f"Skipping non-ECG_PPG event: {event_type}")
