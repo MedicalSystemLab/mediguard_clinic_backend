@@ -70,9 +70,9 @@ async def process_biosignal(stream):
         )
         now = time.time()
 
-        # 1. 버퍼 가져오기 또는 초기화
+        # 1. 버퍼 가져오기 또는 초기화 (옛 스키마/부분 저장 방어)
         buffer = ECG_PPG_TO_BP.get(patient_id)
-        if buffer is None:
+        if not isinstance(buffer, dict) or 'ecg' not in buffer or 'ppg' not in buffer:
             buffer = {'start_time': now, 'ecg': [], 'ppg': []}
             ECG_PPG_TO_BP[patient_id] = buffer
 
