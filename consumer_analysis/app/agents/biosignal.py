@@ -37,7 +37,24 @@ async def analyze_ecg(event: BiosignalECGPPGEvent):
 
 @app.agent(biosignal_topic)
 async def process_biosignal(stream):
-    async for event in stream:
+    async for raw in stream:
+        try:
+            payload = json.loads(raw.decode('utf-8'))
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            logger.warning(f"Failed to decode biosignal message: {e}")
+            continue
+
+        event_type = payload.get('event_type')
+        if event_type != 'biosignal.ECG_PPG.received':
+            logger.debug(f"Skipping non-ECG_PPG event: {event_type}")
+            continue
+
+        try:
+            event = BiosignalECGPPGEvent(**payload)
+        except Exception as e:
+            logger.warning(f"Failed to parse BiosignalECGPPGEvent: {e}")
+            continue
+
         patient_id = event.patient_id
         current_ecg = event.ecg
         current_ppg = event.ppg
