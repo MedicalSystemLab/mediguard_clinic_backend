@@ -14,6 +14,7 @@ app = faust.App(
     web_host="0.0.0.0",
     web_port=8001,
     topic_replication_factor=1,
+    topic_partitions=1,
     store="rocksdb://",
 )
 
@@ -22,6 +23,7 @@ biosignal_topic = app.topic(
     settings.KAFKA_TOPIC_BIOSIGNAL,
     value_type=bytes,
     value_serializer="raw",
+    partitions=1,
 )
 
 # Import agents to register them with the app
