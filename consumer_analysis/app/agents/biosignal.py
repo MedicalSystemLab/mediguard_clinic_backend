@@ -44,10 +44,14 @@ async def process_biosignal(stream):
             logger.warning(f"Failed to decode biosignal message: {e}")
             continue
 
+        logger.info(f"Received payload: {payload}")
+
+
         event_type = payload.get('event_type')
         if event_type != 'biosignal.ECG_PPG.received':
             logger.debug(f"Skipping non-ECG_PPG event: {event_type}")
             continue
+
 
         try:
             event = BiosignalECGPPGEvent(**payload)
@@ -79,6 +83,7 @@ async def process_biosignal(stream):
             continue
 
         # 2. 신호 축적
+
         buffer['ecg'].extend(current_ecg)
         buffer['ppg'].extend(current_ppg)
         ECG_PPG_TO_BP[patient_id] = buffer
