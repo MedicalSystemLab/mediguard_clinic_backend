@@ -7,7 +7,7 @@ from common.schemas.events import BiosignalECGPPGEvent
 from common.db.session import SessionLocal
 from biosignal.app.models.biosignals import BPInitLog, BPMeasureLog
 from consumer_analysis.app.main import app, biosignal_topic
-from bp_analysis import BpManager
+from .bp_analysis import BpManager
 from sqlalchemy.future import select
 
 logger = logging.getLogger(__name__)

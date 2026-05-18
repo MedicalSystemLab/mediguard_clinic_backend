@@ -22,14 +22,14 @@ async def handle_ecg_ppg_event(event_data: dict):
     event = BiosignalECGPPGEvent(**event_data)
     recorded_at_dt = datetime.fromtimestamp(event.timestamp / 1000, tz=timezone.utc)
 
-    conpressed_and_encrypted_ecg_signal = compress_and_encrypt_data_list("h", event.ecg)
-    conpressed_and_encrypted_ppg_signal = compress_and_encrypt_data_list("i", event.ppg)
     try:
         async with SessionLocal() as db:
+            conpressed_and_encrypted_ecg_signal = compress_and_encrypt_data_list("h", event.ecg)
             ecg_signal = Biosignals(patient_id=event.patient_id, biosignal_data=conpressed_and_encrypted_ecg_signal, biosignal_type='ECG', recorded_at=recorded_at_dt)
             db.add(ecg_signal)
 
             if event.ppg is not None:
+                conpressed_and_encrypted_ppg_signal = compress_and_encrypt_data_list("i", event.ppg)
                 ppg_signal = Biosignals(patient_id=event.patient_id, biosignal_data=conpressed_and_encrypted_ppg_signal, biosignal_type='PPG', recorded_at=recorded_at_dt)
                 db.add(ppg_signal)
 

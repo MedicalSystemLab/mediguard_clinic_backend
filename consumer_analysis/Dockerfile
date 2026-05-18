@@ -45,6 +45,7 @@ COPY --from=builder /app/.venv /app/.venv
 # Copy common modules and consumer_analysis app code
 COPY common/ /app/common/
 COPY consumer_analysis/ /app/consumer_analysis/
+COPY biosignal/ /app/biosignal/
 
 RUN chmod +rx /app/consumer_analysis/entrypoint.sh
 

@@ -14,6 +14,7 @@ app = faust.App(
     web_host="0.0.0.0",
     web_port=8001,
     topic_replication_factor=1,
+    
     topic_partitions=1,
     store="rocksdb://",
 )
