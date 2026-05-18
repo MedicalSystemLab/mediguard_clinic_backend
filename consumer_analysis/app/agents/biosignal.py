@@ -129,15 +129,12 @@ async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list, start_tim
         if base_sbp is None:
             base_sbp = 120
 
-        await db.commit()
-
-
-        bp_manager = BpManager('./global_delta_sbp_resta_remove_keepratio.onnx',
-                               './global_delta_dbp_resta_remove_keepratio.onnx', base_sbp, base_dbp)
+        bp_manager = BpManager('../statics/global_delta_sbp_resta_remove_keepratio.onnx',
+                               '../statics/global_delta_dbp_resta_remove_keepratio.onnx', base_sbp, base_dbp)
         signal_features = bp_manager.process_data(ecg, ppg)
 
-        bp_manager = BpManager('./global_delta_sbp_resta_remove_keepratio.onnx',
-                               './global_delta_dbp_resta_remove_keepratio.onnx', base_sbp, base_dbp, signal_features)
+        bp_manager = BpManager('../statics/global_delta_sbp_resta_remove_keepratio.onnx',
+                               '../statics/global_delta_dbp_resta_remove_keepratio.onnx', base_sbp, base_dbp, signal_features)
 
         predicted_sbp, predicted_dbp = bp_manager.predict_blood_pressure(signal_features)
 
