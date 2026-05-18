@@ -12,8 +12,6 @@ from biosignal.app.models.biosignals import Biosignals, BPInitLog
 from biosignal.app.models.biosignal_enum import BiosignalTypeEnum, MatricTypeEnum
 from common.core.security import get_password_hash
 
-
-
 from common.schemas.events import BiosignalECGEvent, BiosignalPPGEvent, BiosignalRESPEvent, BiosignalECGPPGEvent, BiosignalBPInitEvent
 
 logger = logging.getLogger(__name__)

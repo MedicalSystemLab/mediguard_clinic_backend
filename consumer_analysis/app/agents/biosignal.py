@@ -4,7 +4,11 @@ import faust
 import time
 
 from common.schemas.events import BiosignalECGPPGEvent
+from common.db.session import SessionLocal
+from biosignal.app.models.biosignals import BPInitLog, BPMeasureLog
 from consumer_analysis.app.main import app, biosignal_topic
+from bp_analysis import BpManager
+from sqlalchemy.future import select
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +36,7 @@ async def analyze_ecg(event: BiosignalECGPPGEvent):
         f"PPG signal_length: {len(event.ppg)}, "
         f"timestamp: {event.timestamp}"
     )
+
     # TODO: Connect ML inference pipeline (arrhythmia detection, heart rate)
 
 
@@ -97,16 +102,49 @@ async def process_biosignal(stream):
                 patient_id=patient_id,
                 ecg=list(buffer['ecg']),
                 ppg=list(buffer['ppg']),
+                start_time=buffer['start_time'] / 1000,
+                end_time=event.timestamp / 1000
             )
 
             # 분석 완료 후 버퍼 초기화 (메모리 누수 방지)
             del ECG_PPG_TO_BP[patient_id]
 
 
-async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list):
+async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list, start_time: float, end_time: float):
     """축적된 ECG/PPG 배치에 대한 분석 진입점."""
     logger.info(
         f"analyze_ecg_ppg_batch - patient_id: {patient_id}, "
         f"ecg_length: {len(ecg)}, ppg_length: {len(ppg)}"
     )
+
+
+    async with SessionLocal() as db:
+        bp_init_log = db.execute(select(BPInitLog).where(BPInitLog.patient_id == patient_id).order_by(BPInitLog.created_at.desc())).scalars().first()
+        base_sbp = bp_init_log.baseSBP
+        base_dbp = bp_init_log.baseDBP
+
+        if base_dbp is None:
+            base_dbp = 80
+
+        if base_sbp is None:
+            base_sbp = 120
+
+        await db.commit()
+
+
+        bp_manager = BpManager('./global_delta_sbp_resta_remove_keepratio.onnx',
+                               './global_delta_dbp_resta_remove_keepratio.onnx', base_sbp, base_dbp)
+        signal_features = bp_manager.process_data(ecg, ppg)
+
+        bp_manager = BpManager('./global_delta_sbp_resta_remove_keepratio.onnx',
+                               './global_delta_dbp_resta_remove_keepratio.onnx', base_sbp, base_dbp, signal_features)
+
+        predicted_sbp, predicted_dbp = bp_manager.predict_blood_pressure(signal_features)
+
+        bp_measure_log = BPMeasureLog(patient_id=patient_id, base_sbp=base_sbp, base_dbp=base_dbp,
+                                      predicted_sbp=base_sbp + predicted_sbp, predicted_dbp=base_dbp + predicted_dbp,
+                                      started_at=start_time, ended_at=end_time)
+        await db.add(bp_measure_log)
+        await db.commit()
+
     # TODO: ML 추론 파이프라인 연결 (BP 추정 등)

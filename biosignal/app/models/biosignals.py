@@ -64,4 +64,18 @@ class BPInitLog(BiosignalBase):
     ended_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
+class BPMeasureLog(BiosignalBase):
+    __tablename__ = "bp_measure_log"
+    __table_args__ = {"schema": "biosignal"}
+
+    log_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid6.uuid7)
+    patient_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True, nullable=False)
+    base_sbp: Mapped[float] = mapped_column(Float, nullable=False)
+    base_dbp: Mapped[float] = mapped_column(Float, nullable=False)
+    predicted_sbp: Mapped[float] = mapped_column(Float, nullable=False)
+    predicted_dbp: Mapped[float] = mapped_column(Float, nullable=False)
+    started_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    ended_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
 
