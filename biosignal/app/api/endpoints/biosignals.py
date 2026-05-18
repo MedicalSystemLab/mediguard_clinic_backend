@@ -1,10 +1,13 @@
 from fastapi import APIRouter, status, Depends
 
-from biosignal.app.schemas.biosignal import ECGBiosignal, PPGBiosignal, RESPBiosignal, ECGAndPPGSignal, BPAnalysisInitParams
+from biosignal.app.schemas.biosignal import ECGBiosignal, PPGBiosignal, RESPBiosignal, ECGAndPPGSignal, \
+    BPAnalysisInitParams
+from biosignal.app.schemas.biosignal import BioMatrics as BioMatricsRequest
 from common.core.config import settings
 from common.core.auth import get_current_patient_id
 from common.core.kafka_producer import publish_event
-from common.schemas.events import BiosignalECGEvent, BiosignalPPGEvent, BiosignalRESPEvent, BiosignalECGPPGEvent, BiosignalBPInitEvent
+from common.schemas.events import BiosignalECGEvent, BiosignalPPGEvent, BiosignalRESPEvent, BiosignalECGPPGEvent, \
+    BiosignalBPInitEvent, BioMatrixEvent
 
 router = APIRouter()
 
@@ -42,6 +45,30 @@ async def collect_ecg_signal(
         signal_type="ECG",
         signal=signal_in.signal,
         timestamp=signal_in.recorded_at
+    )
+
+    await publish_event(
+        topic=settings.KAFKA_TOPIC_BIOSIGNAL,
+        event=event.model_dump(),
+        key=patient_id
+    )
+
+    return
+
+@router.post("/biomatrix", status_code=status.HTTP_201_CREATED)
+async def collect_biomatrix_signal(
+        *,
+        patient_id: str = Depends(get_current_patient_id),
+        matrix_in: BioMatricsRequest
+):
+
+    event = BioMatrixEvent(
+        patient_id=patient_id,
+        hr=matrix_in.hr,
+        rr=matrix_in.rr,
+        spo2=matrix_in.spo2,
+        temperature=matrix_in.temperature,
+        recorded_at=matrix_in.recorded_at
     )
 
     await publish_event(

@@ -36,6 +36,16 @@ class BiosignalECGEvent(BaseModel):
     signal: list
     timestamp: int
 
+class BioMatrixEvent(BaseModel):
+    """Biosignal event schema (template for future use)"""
+    event_type: str = "biosignal.biomatrix.received"
+    patient_id: str
+    hr: float
+    rr: float
+    spo2: float | None = None
+    temperature: float
+    recorded_at: int
+
 class BiosignalPPGEvent(BaseModel):
     """Biosignal event schema (template for future use)"""
     event_type: str = "biosignal.PPG.received"

@@ -17,6 +17,13 @@ class RESPBiosignal(BaseModel):
     signal: list[float]
     recorded_at: int
 
+class BioMatrics(BaseModel):
+    hr: float
+    rr: float
+    spo2: float | None = None
+    temperature: float
+    recorded_at: int
+
 class BPAnalysisInitParams(BaseModel):
     # Base Timing (4)
     pttf: float

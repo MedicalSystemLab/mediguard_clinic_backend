@@ -34,6 +34,19 @@ class BiosignalMatrics(BiosignalBase):
                                                   primary_key=True)
     value : Mapped[float] = mapped_column(Float, nullable=False)
 
+class BioMatrics(BiosignalBase):
+    __tablename__ = "bio_metrics"
+    __table_args__ = {"schema": "biosignal"}
+
+    matrix_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, nullable=False)
+    patient_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    hr: Mapped[float] = mapped_column(Float, nullable=False)
+    rr: Mapped[float] = mapped_column(Float, nullable=False)
+    temp: Mapped[float] = mapped_column(Float, nullable=False)
+    spo2: Mapped[float] = mapped_column(Float, nullable=True)
+
+    recorded_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), primary_key=True)
+
 class BPInitLog(BiosignalBase):
     __tablename__ = "bp_init_log"
     __table_args__ = {"schema": "biosignal"}
