@@ -2,8 +2,8 @@ services:
   clinical_manage_service:
     build:
       context: ..
-      dockerfile: ./auth/Dockerfile
-    container_name: auth_service
+      dockerfile: ./clinical_manage/Dockerfile
+    container_name: clinical_manage_service
     restart: always
     expose:
       - "8000"
@@ -15,7 +15,7 @@ services:
     volumes:
       - ./app:/app/clinical_manage/app
       - ../common:/app/common
-      - ./alembic.ini:/app/auth/alembic.ini
-      - ./alembic:/app/auth/alembic
-      - ./entrypoint.sh:/app/auth/entrypoint.sh
-    entrypoint: ["/app/auth/entrypoint.sh"]
+      - ./alembic.ini:/app/clinical_manage/alembic.ini
+      - ./alembic:/app/clinical_manage/alembic
+      - ./entrypoint.sh:/app/clinical_manage/entrypoint.sh
+    entrypoint: ["/app/clinical_manage/entrypoint.sh"]

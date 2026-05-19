@@ -26,7 +26,7 @@ ENV PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH" \
     PYTHONPATH="/app"
 
-WORKDIR /app/auth
+WORKDIR /app/clinical_manage
 
 # Copy the virtual environment from builder
 COPY --from=builder /app/.venv /app/.venv
@@ -37,10 +37,10 @@ COPY common/ /app/common/
 COPY auth/ /app/auth/
 COPY clinical_manage /app/clinical_manage/
 
-RUN chmod +rx /app/auth/entrypoint.sh
+RUN chmod +rx /app/clinical_manage/entrypoint.sh
 
 # Expose port
 EXPOSE 8000
 
 # Run the application
-ENTRYPOINT ["/app/auth/entrypoint.sh"]
+ENTRYPOINT ["/app/clinical_manage/entrypoint.sh"]
