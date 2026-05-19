@@ -3,7 +3,8 @@ from fastapi.security import HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from auth.app.models.auth import User
-from auth.app.schemas.auth import Patient
+from auth.app.models.auth import Patient
+from clinical_manage.app.models.info import PatientProfile, PractitionerProfiles
 from common.db.session import get_db
 from common.core.config import settings
 from common.core.auth import get_current_patient_id
@@ -20,15 +21,21 @@ async def get_profile(
     current_client_id: str = Depends(get_current_patient_id),
     db: AsyncSession = Depends(get_db)
 ):
-    user = db.execute(select(User).where(User.client_id == current_client_id))
-    user = user.scalar_one_or_none()
+    result = await db.execute(select(User).where(User.user_id == current_client_id))
+    user = result.scalar_one_or_none()
 
     if user:
-        return {"client_id": current_client_id, "user": user}
+        return {"client_id": current_client_id, "type": "user", "user": user}
 
-    user = db.execute(select(Patient).where(Patient.patient_id == current_client_id))
-    user = user.scalar_one_or_none()
+    result = await db.execute(select(Patient).where(Patient.patient_id == current_client_id))
+    user = result.scalar_one_or_none()
+
     if user:
-        return {"client_id": current_client_id, "user": user}
+        profile_result = await db.execute(select(PatientProfile).where(PatientProfile.patient_id == current_client_id))
+        profile = profile_result.scalar_one_or_none()
+        
+        if profile:
+            return {"client_id": current_client_id, "type": "patient", "profile": profile}
 
-    return {"client_id": current_client_id}
+
+    return {"message": "Not Found Profile", "client_id": current_client_id}
