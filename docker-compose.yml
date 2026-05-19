@@ -9,3 +9,4 @@ include:
   - ./consumer_db/docker-compose.yml
   - ./consumer_analysis/docker-compose.yml
   - ./biosignal/docker-compose.yml
+  - ./clinical_manage/docker-compose.yml

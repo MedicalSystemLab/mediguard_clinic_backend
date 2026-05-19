@@ -7,7 +7,7 @@ from common.schemas.events import BiosignalECGPPGEvent
 from common.db.session import SessionLocal
 from biosignal.app.models.biosignals import BPInitLog, BPMeasureLog
 from consumer_analysis.app.main import app, biosignal_topic
-from .bp_analysis import BpManager
+from .bp_analysis import BpManager, BpFeatures
 from sqlalchemy.future import select
 
 logger = logging.getLogger(__name__)
@@ -120,8 +120,20 @@ async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list, start_tim
 
     async with SessionLocal() as db:
         bp_init_log = db.execute(select(BPInitLog).where(BPInitLog.patient_id == patient_id).order_by(BPInitLog.created_at.desc())).scalars().first()
+
+        if bp_init_log is None:
+            raise ValueError(f"No BPInitLog found for patient_id: {patient_id}")
+
+        dumped_bp_init_log = bp_init_log.model_dump()
+
+        bp_features = BpFeatures(dumped_bp_init_log)
+
+
+
         base_sbp = bp_init_log.baseSBP
         base_dbp = bp_init_log.baseDBP
+
+        print(bp_features)
 
         if base_dbp is None:
             base_dbp = 80
@@ -130,11 +142,8 @@ async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list, start_tim
             base_sbp = 120
 
         bp_manager = BpManager('../statics/global_delta_sbp_resta_remove_keepratio.onnx',
-                               '../statics/global_delta_dbp_resta_remove_keepratio.onnx', base_sbp, base_dbp)
+                               '../statics/global_delta_dbp_resta_remove_keepratio.onnx', base_sbp, base_dbp, bp_features)
         signal_features = bp_manager.process_data(ecg, ppg)
-
-        bp_manager = BpManager('../statics/global_delta_sbp_resta_remove_keepratio.onnx',
-                               '../statics/global_delta_dbp_resta_remove_keepratio.onnx', base_sbp, base_dbp, signal_features)
 
         predicted_sbp, predicted_dbp = bp_manager.predict_blood_pressure(signal_features)
 
