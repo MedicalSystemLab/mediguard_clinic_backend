@@ -2,6 +2,7 @@ import json
 import logging
 import faust
 import time
+from datetime import datetime, timezone
 
 from common.schemas.events import BiosignalECGPPGEvent
 from common.db.session import SessionLocal
@@ -75,7 +76,12 @@ async def process_biosignal(stream):
         # 1. 버퍼 가져오기 또는 초기화 (옛 스키마/부분 저장 방어)
         buffer = ECG_PPG_TO_BP.get(patient_id)
         if not isinstance(buffer, dict) or 'ecg' not in buffer or 'ppg' not in buffer:
-            buffer = {'start_time': now, 'ecg': [], 'ppg': []}
+            buffer = {
+                'start_timestamp': event.timestamp,
+                'received_at': now,
+                'ecg': [],
+                'ppg': [],
+            }
             ECG_PPG_TO_BP[patient_id] = buffer
 
         # ppg 데이터에 None 데이터가 들어올 경우 버퍼 초기화
@@ -95,14 +101,14 @@ async def process_biosignal(stream):
             logger.info(
                 f"PPG buffer reached analysis threshold for patient_id: {patient_id} "
                 f"(ppg: {len(buffer['ppg'])}, ecg: {len(buffer['ecg'])}, "
-                f"elapsed: {now - buffer['start_time']:.2f}s)"
+                f"elapsed: {now - buffer['received_at']:.2f}s)"
             )
 
             await analyze_ecg_ppg_batch(
                 patient_id=patient_id,
                 ecg=list(buffer['ecg']),
                 ppg=list(buffer['ppg']),
-                start_time=buffer['start_time'] / 1000,
+                start_time=buffer['start_timestamp'] / 1000,
                 end_time=event.timestamp / 1000
             )
 
@@ -119,21 +125,18 @@ async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list, start_tim
 
 
     async with SessionLocal() as db:
-        bp_init_log = db.execute(select(BPInitLog).where(BPInitLog.patient_id == patient_id).order_by(BPInitLog.created_at.desc())).scalars().first()
+        bp_init_result = await db.execute(
+            select(BPInitLog)
+            .where(BPInitLog.patient_id == patient_id)
+            .order_by(BPInitLog.created_at.desc())
+        )
+        bp_init_log = bp_init_result.scalars().first()
 
         if bp_init_log is None:
             raise ValueError(f"No BPInitLog found for patient_id: {patient_id}")
 
-        dumped_bp_init_log = bp_init_log.model_dump()
-
-        bp_features = BpFeatures(dumped_bp_init_log)
-
-
-
         base_sbp = bp_init_log.baseSBP
         base_dbp = bp_init_log.baseDBP
-
-        print(bp_features)
 
         if base_dbp is None:
             base_dbp = 80
@@ -141,16 +144,35 @@ async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list, start_tim
         if base_sbp is None:
             base_sbp = 120
 
+        bp_features = BpFeatures(
+            pttf=bp_init_log.pttf,
+            pttd=bp_init_log.pttd,
+            d_ptt=bp_init_log.dPtt,
+            d_ptt_norm=bp_init_log.dPttNorm,
+            up_slope=bp_init_log.upSlope,
+            pw50=bp_init_log.pw50,
+            dia_slope=bp_init_log.diaSlope,
+            auc=bp_init_log.auc,
+            acdc=bp_init_log.acdc,
+            rr_mean=bp_init_log.rrMean,
+            rr_std=bp_init_log.rrStd,
+            corr_mean=0.0,
+            keep_ratio=1.0,
+        )
+
         bp_manager = BpManager('../statics/global_delta_sbp_resta_remove_keepratio.onnx',
                                '../statics/global_delta_dbp_resta_remove_keepratio.onnx', base_sbp, base_dbp, bp_features)
         signal_features = bp_manager.process_data(ecg, ppg)
+        if signal_features is None:
+            raise ValueError(f"Failed to extract BP features for patient_id: {patient_id}")
 
         predicted_sbp, predicted_dbp = bp_manager.predict_blood_pressure(signal_features)
 
         bp_measure_log = BPMeasureLog(patient_id=patient_id, base_sbp=base_sbp, base_dbp=base_dbp,
                                       predicted_sbp=base_sbp + predicted_sbp, predicted_dbp=base_dbp + predicted_dbp,
-                                      started_at=start_time, ended_at=end_time)
-        await db.add(bp_measure_log)
+                                      started_at=datetime.fromtimestamp(start_time, tz=timezone.utc),
+                                      ended_at=datetime.fromtimestamp(end_time, tz=timezone.utc))
+        db.add(bp_measure_log)
         await db.commit()
 
     # TODO: ML 추론 파이프라인 연결 (BP 추정 등)
