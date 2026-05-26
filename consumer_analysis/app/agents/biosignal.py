@@ -127,7 +127,7 @@ async def process_biosignal(stream):
             del ECG_PPG_TO_BP[patient_id]
 
 
-async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list, start_time: float, end_time: float):
+async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list, start_time: float, end_time: float) -> bool:
     """축적된 ECG/PPG 배치에 대한 분석 진입점."""
     logger.info(
         f"analyze_ecg_ppg_batch - patient_id: {patient_id}, "
@@ -144,7 +144,8 @@ async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list, start_tim
         bp_init_log = bp_init_result.scalars().first()
 
         if bp_init_log is None:
-            raise ValueError(f"No BPInitLog found for patient_id: {patient_id}")
+            logger.warning(f"No BPInitLog found for patient_id: {patient_id}. Skipping BP analysis.")
+            return False
 
         base_sbp = bp_init_log.baseSBP
         base_dbp = bp_init_log.baseDBP
@@ -175,7 +176,8 @@ async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list, start_tim
                                '../../statics/global_delta_dbp_resta_remove_keepratio.onnx', base_sbp, base_dbp, bp_features)
         signal_features = bp_manager.process_data(ecg, ppg)
         if signal_features is None:
-            raise ValueError(f"Failed to extract BP features for patient_id: {patient_id}")
+            logger.warning(f"Failed to extract BP features for patient_id: {patient_id}. Skipping BP analysis.")
+            return False
 
         predicted_sbp, predicted_dbp = bp_manager.predict_blood_pressure(signal_features)
 
@@ -185,5 +187,6 @@ async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list, start_tim
                                       ended_at=datetime.fromtimestamp(end_time, tz=timezone.utc))
         db.add(bp_measure_log)
         await db.commit()
+        return True
 
     # TODO: ML 추론 파이프라인 연결 (BP 추정 등)
