@@ -11,7 +11,10 @@ services:
       - ../.env
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=redpanda:29092
+      - POSTGRES_SERVER=postgres_db
     depends_on:
+      postgres_db:
+        condition: service_healthy
       redpanda:
         condition: service_healthy
     healthcheck:
