@@ -8,11 +8,11 @@ from common.db.session import SessionLocal
 from common.core.security import compress_and_encrypt_data_list
 from clinical_manage.app.models.info import PatientProfile, PractitionerProfiles, GenderEnum
 from auth.app.models.auth import User, Patient
-from biosignal.app.models.biosignals import Biosignals, BPInitLog
+from biosignal.app.models.biosignals import Biosignals, BPInitLog, BioMatrics
 from biosignal.app.models.biosignal_enum import BiosignalTypeEnum, MatricTypeEnum
 from common.core.security import get_password_hash
 
-from common.schemas.events import BiosignalECGEvent, BiosignalPPGEvent, BiosignalRESPEvent, BiosignalECGPPGEvent, BiosignalBPInitEvent
+from common.schemas.events import BiosignalECGEvent, BiosignalPPGEvent, BiosignalRESPEvent, BiosignalECGPPGEvent, BiosignalBPInitEvent, BioMatrixEvent
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +103,27 @@ async def handle_resp_event(event_data: dict):
 
     except Exception as e:
         logger.error(f"Failed to handle biosignal event: {e}", exc_info=True)
+        raise
+
+async def handle_biomatrix_event(event_data: dict):
+    event = BioMatrixEvent(**event_data)
+    recorded_at_dt = datetime.fromtimestamp(event.recorded_at / 1000, tz=timezone.utc)
+
+    try:
+        async with SessionLocal() as db:
+            bio_matrix = BioMatrics(
+                patient_id=event.patient_id,
+                hr=event.hr,
+                rr=event.rr,
+                temp=event.temperature,
+                spo2=event.spo2,
+                recorded_at=recorded_at_dt,
+            )
+            db.add(bio_matrix)
+            await db.commit()
+
+    except Exception as e:
+        logger.error(f"Failed to handle biomatrix event: {e}", exc_info=True)
         raise
 
 async def handle_bp_init_event(event_data: dict):
