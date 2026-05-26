@@ -1,4 +1,5 @@
 from fastapi import APIRouter, status, HTTPException, Depends, Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from common.core.security import verify_password, create_patient_refresh_token, create_patient_access_token
 from common.core.config import settings
@@ -24,7 +25,10 @@ async def register(
     user = await crud_patient.get_by_patient_number(db, patient_number=patient_in.number)
 
     if patient_in.depart:
-        depart = db.query(Department).filter(Department.department_id == patient_in.depart).first()
+        depart_result = await db.execute(
+            select(Department).where(Department.department_id == patient_in.depart)
+        )
+        depart = depart_result.scalar_one_or_none()
 
         if not depart:
             raise HTTPException(
@@ -33,7 +37,10 @@ async def register(
             )
 
     if patient_in.admitted_ward:
-        ward = db.query(Ward).filter(Ward.ward_id == patient_in.admitted_ward).first()
+        ward_result = await db.execute(
+            select(Ward).where(Ward.ward_id == patient_in.admitted_ward)
+        )
+        ward = ward_result.scalar_one_or_none()
 
         if not ward:
             raise HTTPException(
