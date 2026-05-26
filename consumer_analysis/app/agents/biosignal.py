@@ -168,8 +168,8 @@ async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list, start_tim
             acdc=bp_init_log.acdc,
             rr_mean=bp_init_log.rrMean,
             rr_std=bp_init_log.rrStd,
-            corr_mean=0.0,
-            keep_ratio=1.0,
+            corr_mean=bp_init_log.corrMean,
+            keep_ratio=bp_init_log.keepRatio,
         )
 
         bp_manager = BpManager('statics/global_delta_sbp_resta_remove_keepratio.onnx',
