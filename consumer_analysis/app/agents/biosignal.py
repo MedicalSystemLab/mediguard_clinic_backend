@@ -83,6 +83,17 @@ async def process_biosignal(stream):
                 'ppg': [],
             }
             ECG_PPG_TO_BP[patient_id] = buffer
+        else:
+            if 'received_at' not in buffer:
+                legacy_start_time = buffer.get('start_time', now)
+                buffer['received_at'] = legacy_start_time / 1000 if legacy_start_time > 10_000_000_000 else legacy_start_time
+
+            if 'start_timestamp' not in buffer:
+                buffered_sample_count = len(buffer.get('ppg') or [])
+                buffered_duration_ms = int(buffered_sample_count * 1000 / 500)
+                buffer['start_timestamp'] = event.timestamp - buffered_duration_ms
+
+            ECG_PPG_TO_BP[patient_id] = buffer
 
         # ppg 데이터에 None 데이터가 들어올 경우 버퍼 초기화
         if current_ppg is None:
