@@ -18,10 +18,10 @@ class RESPBiosignal(BaseModel):
     recorded_at: int
 
 class BioMatrics(BaseModel):
-    hr: float
-    rr: float
+    hr: float | None = None
+    rr: float | None = None
     spo2: float | None = None
-    temperature: float
+    temperature: float | None = None
     recorded_at: int
 
 class BPAnalysisInitParams(BaseModel):

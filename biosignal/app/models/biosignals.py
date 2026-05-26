@@ -40,9 +40,9 @@ class BioMatrics(BiosignalBase):
 
     matrix_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid6.uuid7, nullable=False)
     patient_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-    hr: Mapped[float] = mapped_column(Float, nullable=False)
-    rr: Mapped[float] = mapped_column(Float, nullable=False)
-    temp: Mapped[float] = mapped_column(Float, nullable=False)
+    hr: Mapped[float] = mapped_column(Float, nullable=True)
+    rr: Mapped[float] = mapped_column(Float, nullable=True)
+    temp: Mapped[float] = mapped_column(Float, nullable=True)
     spo2: Mapped[float] = mapped_column(Float, nullable=True)
 
     recorded_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), primary_key=True)
