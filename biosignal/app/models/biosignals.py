@@ -69,6 +69,9 @@ class BPInitLog(BiosignalBase):
     rrMean: Mapped[float] = mapped_column(Float, nullable=False)
     rrStd: Mapped[float] = mapped_column(Float, nullable=False)
 
+    corrMean: Mapped[float] = mapped_column(Float, nullable=True)
+    keepRatio: Mapped[float] = mapped_column(Float, nullable=True)
+
     # BaseValue (2)
     baseSBP: Mapped[float] = mapped_column(Float, nullable=False)
     baseDBP: Mapped[float] = mapped_column(Float, nullable=False)
