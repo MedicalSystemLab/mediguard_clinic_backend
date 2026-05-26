@@ -24,6 +24,14 @@ class BioMatrics(BaseModel):
     temperature: float | None = None
     recorded_at: int
 
+class BioMatricsAggregate(BaseModel):
+    start_time: int
+    end_time: int
+    hr: float | None = None
+    rr: float | None = None
+    temp: float | None = None
+    spo2: float | None = None
+
 class BPAnalysisInitParams(BaseModel):
     # Base Timing (4)
     pttf: float

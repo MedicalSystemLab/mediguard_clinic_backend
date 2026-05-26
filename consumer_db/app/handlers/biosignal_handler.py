@@ -154,6 +154,10 @@ async def handle_bp_init_event(event_data: dict):
                 # BaseValue (2)
                 baseSBP=event.baseSBP,
                 baseDBP=event.baseDBP,
+
+                corrMean=event.corrMean,
+                keepRatio=event.keepRatio,
+
                 started_at=started_at,
                 ended_at=ended_at
             )

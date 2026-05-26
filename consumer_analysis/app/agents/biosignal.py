@@ -13,8 +13,10 @@ from sqlalchemy.future import select
 
 logger = logging.getLogger(__name__)
 
-# PPG 분석 임계치: 500Hz * 30초 = 15,000 샘플
-PPG_ANALYSIS_THRESHOLD = 500 * 30
+SAMPLE_RATE_HZ = 500
+ANALYSIS_WINDOW_SECONDS = 30
+ANALYSIS_WINDOW_SAMPLES = SAMPLE_RATE_HZ * ANALYSIS_WINDOW_SECONDS
+PPG_ANALYSIS_THRESHOLD = ANALYSIS_WINDOW_SAMPLES
 
 # Dispatch table: event_type -> (pydantic model, analysis function)
 _HANDLERS = {}
@@ -90,7 +92,7 @@ async def process_biosignal(stream):
 
             if 'start_timestamp' not in buffer:
                 buffered_sample_count = len(buffer.get('ppg') or [])
-                buffered_duration_ms = int(buffered_sample_count * 1000 / 500)
+                buffered_duration_ms = int(buffered_sample_count * 1000 / SAMPLE_RATE_HZ)
                 buffer['start_timestamp'] = event.timestamp - buffered_duration_ms
 
             ECG_PPG_TO_BP[patient_id] = buffer
@@ -109,6 +111,11 @@ async def process_biosignal(stream):
 
         # 3. 분석 조건 확인: PPG 샘플이 임계치(500Hz * 30s)에 도달했는지
         if len(buffer['ppg']) >= PPG_ANALYSIS_THRESHOLD:
+            analysis_ecg = list(buffer['ecg'][:ANALYSIS_WINDOW_SAMPLES])
+            analysis_ppg = list(buffer['ppg'][:ANALYSIS_WINDOW_SAMPLES])
+            window_start_timestamp = buffer['start_timestamp']
+            window_duration_ms = int(ANALYSIS_WINDOW_SAMPLES * 1000 / SAMPLE_RATE_HZ)
+
             logger.info(
                 f"PPG buffer reached analysis threshold for patient_id: {patient_id} "
                 f"(ppg: {len(buffer['ppg'])}, ecg: {len(buffer['ecg'])}, "
@@ -117,14 +124,24 @@ async def process_biosignal(stream):
 
             await analyze_ecg_ppg_batch(
                 patient_id=patient_id,
-                ecg=list(buffer['ecg']),
-                ppg=list(buffer['ppg']),
-                start_time=buffer['start_timestamp'] / 1000,
-                end_time=event.timestamp / 1000
+                ecg=analysis_ecg,
+                ppg=analysis_ppg,
+                start_time=window_start_timestamp / 1000,
+                end_time=(window_start_timestamp + window_duration_ms) / 1000
             )
 
-            # 분석 완료 후 버퍼 초기화 (메모리 누수 방지)
-            del ECG_PPG_TO_BP[patient_id]
+            remaining_ecg = buffer['ecg'][ANALYSIS_WINDOW_SAMPLES:]
+            remaining_ppg = buffer['ppg'][ANALYSIS_WINDOW_SAMPLES:]
+            if remaining_ppg:
+                buffer = {
+                    'start_timestamp': window_start_timestamp + window_duration_ms,
+                    'received_at': now,
+                    'ecg': remaining_ecg,
+                    'ppg': remaining_ppg,
+                }
+                ECG_PPG_TO_BP[patient_id] = buffer
+            else:
+                del ECG_PPG_TO_BP[patient_id]
 
 
 async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list, start_time: float, end_time: float) -> bool:

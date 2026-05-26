@@ -92,7 +92,7 @@ class BpManager:
             ir_dc = self.butter_filter(ir_raw, 0.3, 4, 'low')
             ir_dc = self.moving_average(ir_dc, 5)
 
-            # Data Trimming (가운데 추출)
+            # 30초 window에서 앞 5초/뒤 5초를 제외하고 중간 20초만 분석합니다.
             trim_count = int(5 * self.FS)
             start_idx, end_idx = trim_count, len(ir_ac) - trim_count
 
