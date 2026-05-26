@@ -171,8 +171,8 @@ async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list, start_tim
             keep_ratio=1.0,
         )
 
-        bp_manager = BpManager('../statics/global_delta_sbp_resta_remove_keepratio.onnx',
-                               '../statics/global_delta_dbp_resta_remove_keepratio.onnx', base_sbp, base_dbp, bp_features)
+        bp_manager = BpManager('../../statics/global_delta_sbp_resta_remove_keepratio.onnx',
+                               '../../statics/global_delta_dbp_resta_remove_keepratio.onnx', base_sbp, base_dbp, bp_features)
         signal_features = bp_manager.process_data(ecg, ppg)
         if signal_features is None:
             raise ValueError(f"Failed to extract BP features for patient_id: {patient_id}")
