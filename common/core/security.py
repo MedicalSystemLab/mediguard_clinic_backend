@@ -328,6 +328,7 @@ def create_patient_access_token(data: dict | Any, expires_delta: timedelta | Non
     to_encode = {
         "exp": expire,
         "sub": sub,
+        "permissions": "patient",
         "iss": settings.JWT_ISSUER,
         "type": "access"
     }
@@ -347,6 +348,7 @@ def create_patient_refresh_token(data: dict | Any, expires_delta: timedelta | No
     to_encode = {
         "exp": expire,
         "sub": sub,
+        "permissions": "patient",
         "iss": settings.JWT_ISSUER,
         "type": "refresh"
     }

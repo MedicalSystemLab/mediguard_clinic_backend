@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from uuid import UUID
 
 from fastapi import APIRouter, status, Depends, Query, HTTPException
 from sqlalchemy import text
@@ -45,7 +46,7 @@ def get_biomatrix_time_range(start_time: int | None, end_time: int | None) -> tu
 
 async def read_single_biometric(
         *,
-        patient_id: str,
+        patient_id: UUID,
         db: AsyncSession,
         metric_name: str,
         records_interval: int,
@@ -70,7 +71,7 @@ async def read_single_biometric(
         result = await db.execute(
             query,
             {
-                "patient_id": patient_id,
+                "patient_id": str(patient_id),
                 "start_dt": start_dt,
                 "end_dt": end_dt,
             },
@@ -101,7 +102,7 @@ async def read_single_biometric(
     result = await db.execute(
         query,
         {
-            "patient_id": patient_id,
+            "patient_id": str(patient_id),
             "start_dt": start_dt,
             "end_dt": end_dt,
             "start_epoch": start_dt.timestamp(),
@@ -198,7 +199,7 @@ async def collect_biomatrix_signal(
 @router.get("/biomatrix", response_model=list[BioMatricsAggregate], status_code=status.HTTP_200_OK)
 async def read_biomatrix_aggregates(
         *,
-        patient_id: str = Depends(get_current_patient_id),
+        patient_id: UUID = Query(..., description="조회할 환자 UUID"),
         db: AsyncSession = Depends(get_db),
         records_interval: int = Query(..., ge=0, description="Aggregation interval in minutes. 0이면 원본 데이터를 반환합니다."),
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
@@ -224,7 +225,7 @@ async def read_biomatrix_aggregates(
         result = await db.execute(
             query,
             {
-                "patient_id": patient_id,
+                "patient_id": str(patient_id),
                 "start_dt": start_dt,
                 "end_dt": end_dt,
             },
@@ -261,7 +262,7 @@ async def read_biomatrix_aggregates(
     result = await db.execute(
         query,
         {
-            "patient_id": patient_id,
+            "patient_id": str(patient_id),
             "start_dt": start_dt,
             "end_dt": end_dt,
             "start_epoch": start_dt.timestamp(),
@@ -294,7 +295,7 @@ async def read_biomatrix_aggregates(
 @router.get("/hr", response_model=list[BioMetricAggregate], status_code=status.HTTP_200_OK)
 async def read_hr_aggregates(
         *,
-        patient_id: str = Depends(get_current_patient_id),
+        patient_id: UUID = Query(..., description="조회할 환자 UUID"),
         db: AsyncSession = Depends(get_db),
         records_interval: int = Query(..., ge=0, description="Aggregation interval in minutes. 0이면 원본 데이터를 반환합니다."),
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
@@ -313,7 +314,7 @@ async def read_hr_aggregates(
 @router.get("/rr", response_model=list[BioMetricAggregate], status_code=status.HTTP_200_OK)
 async def read_rr_aggregates(
         *,
-        patient_id: str = Depends(get_current_patient_id),
+        patient_id: UUID = Query(..., description="조회할 환자 UUID"),
         db: AsyncSession = Depends(get_db),
         records_interval: int = Query(..., ge=0, description="Aggregation interval in minutes. 0이면 원본 데이터를 반환합니다."),
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
@@ -332,7 +333,7 @@ async def read_rr_aggregates(
 @router.get("/temp", response_model=list[BioMetricAggregate], status_code=status.HTTP_200_OK)
 async def read_temp_aggregates(
         *,
-        patient_id: str = Depends(get_current_patient_id),
+        patient_id: UUID = Query(..., description="조회할 환자 UUID"),
         db: AsyncSession = Depends(get_db),
         records_interval: int = Query(..., ge=0, description="Aggregation interval in minutes. 0이면 원본 데이터를 반환합니다."),
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
@@ -351,7 +352,7 @@ async def read_temp_aggregates(
 @router.get("/spo2", response_model=list[BioMetricAggregate], status_code=status.HTTP_200_OK)
 async def read_spo2_aggregates(
         *,
-        patient_id: str = Depends(get_current_patient_id),
+        patient_id: UUID = Query(..., description="조회할 환자 UUID"),
         db: AsyncSession = Depends(get_db),
         records_interval: int = Query(..., ge=0, description="Aggregation interval in minutes. 0이면 원본 데이터를 반환합니다."),
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
