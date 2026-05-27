@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from biosignal.app.schemas.biosignal import ECGBiosignal, PPGBiosignal, RESPBiosignal, ECGAndPPGSignal, \
     BPAnalysisInitParams
-from biosignal.app.schemas.biosignal import BioMatrics as BioMatricsRequest, BioMatricsAggregate
+from biosignal.app.schemas.biosignal import BioMatrics as BioMatricsRequest, BioMatricsAggregate, BioMetricAggregate
 from common.core.config import settings
 from common.core.auth import get_current_patient_id
 from common.core.kafka_producer import publish_event
@@ -15,6 +15,117 @@ from common.schemas.events import BiosignalECGEvent, BiosignalPPGEvent, Biosigna
     BiosignalBPInitEvent, BioMatrixEvent
 
 router = APIRouter()
+
+BIOMETRIC_COLUMNS = {"hr": "hr", "rr": "rr", "temp": "temp", "spo2": "spo2"}
+
+
+def get_biomatrix_time_range(start_time: int | None, end_time: int | None) -> tuple[datetime, datetime]:
+    if start_time is None and end_time is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="end_time만 입력할 수 없습니다. start_time을 함께 입력하세요.",
+        )
+
+    now = datetime.now(timezone.utc)
+    if start_time is None and end_time is None:
+        end_dt = now
+        start_dt = end_dt - timedelta(hours=24)
+    else:
+        start_dt = datetime.fromtimestamp(start_time / 1000, tz=timezone.utc)
+        end_dt = datetime.fromtimestamp(end_time / 1000, tz=timezone.utc) if end_time is not None else now
+
+    if start_dt >= end_dt:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="start_time은 end_time보다 이전이어야 합니다.",
+        )
+
+    return start_dt, end_dt
+
+
+async def read_single_biometric(
+        *,
+        patient_id: str,
+        db: AsyncSession,
+        metric_name: str,
+        records_interval: int,
+        start_time: int | None,
+        end_time: int | None,
+) -> list[BioMetricAggregate]:
+    start_dt, end_dt = get_biomatrix_time_range(start_time, end_time)
+    metric_column = BIOMETRIC_COLUMNS[metric_name]
+
+    if records_interval == 0:
+        query = text(f"""
+            SELECT
+                recorded_at,
+                {metric_column} AS value
+            FROM biosignal.bio_metrics
+            WHERE patient_id = CAST(:patient_id AS uuid)
+              AND recorded_at >= :start_dt
+              AND recorded_at <= :end_dt
+            ORDER BY recorded_at
+        """)
+
+        result = await db.execute(
+            query,
+            {
+                "patient_id": patient_id,
+                "start_dt": start_dt,
+                "end_dt": end_dt,
+            },
+        )
+
+        return [
+            BioMetricAggregate(
+                start_time=int(row["recorded_at"].timestamp() * 1000),
+                end_time=int(row["recorded_at"].timestamp() * 1000),
+                value=row["value"],
+            )
+            for row in result.mappings()
+        ]
+
+    bucket_seconds = records_interval * 60
+    query = text(f"""
+        SELECT
+            FLOOR((EXTRACT(EPOCH FROM recorded_at) - :start_epoch) / :bucket_seconds)::bigint AS bucket_index,
+            AVG({metric_column}) AS value
+        FROM biosignal.bio_metrics
+        WHERE patient_id = CAST(:patient_id AS uuid)
+          AND recorded_at >= :start_dt
+          AND recorded_at <= :end_dt
+        GROUP BY bucket_index
+        ORDER BY bucket_index
+    """)
+
+    result = await db.execute(
+        query,
+        {
+            "patient_id": patient_id,
+            "start_dt": start_dt,
+            "end_dt": end_dt,
+            "start_epoch": start_dt.timestamp(),
+            "bucket_seconds": bucket_seconds,
+        },
+    )
+
+    start_ms = int(start_dt.timestamp() * 1000)
+    end_ms = int(end_dt.timestamp() * 1000)
+    interval_ms = records_interval * 60 * 1000
+
+    aggregates = []
+    for row in result.mappings():
+        bucket_start = start_ms + int(row["bucket_index"]) * interval_ms
+        bucket_end = min(bucket_start + interval_ms, end_ms)
+        aggregates.append(
+            BioMetricAggregate(
+                start_time=bucket_start,
+                end_time=bucket_end,
+                value=row["value"],
+            )
+        )
+
+    return aggregates
 
 @router.get("/health", status_code=status.HTTP_200_OK)
 def health_check():
@@ -89,29 +200,47 @@ async def read_biomatrix_aggregates(
         *,
         patient_id: str = Depends(get_current_patient_id),
         db: AsyncSession = Depends(get_db),
-        records_interval: int = Query(..., gt=0, description="Aggregation interval in minutes"),
+        records_interval: int = Query(..., ge=0, description="Aggregation interval in minutes. 0이면 원본 데이터를 반환합니다."),
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
         end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
 ):
-    if start_time is None and end_time is not None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="end_time만 입력할 수 없습니다. start_time을 함께 입력하세요.",
+    start_dt, end_dt = get_biomatrix_time_range(start_time, end_time)
+
+    if records_interval == 0:
+        query = text("""
+            SELECT
+                recorded_at,
+                hr,
+                rr,
+                temp,
+                spo2
+            FROM biosignal.bio_metrics
+            WHERE patient_id = CAST(:patient_id AS uuid)
+              AND recorded_at >= :start_dt
+              AND recorded_at <= :end_dt
+            ORDER BY recorded_at
+        """)
+
+        result = await db.execute(
+            query,
+            {
+                "patient_id": patient_id,
+                "start_dt": start_dt,
+                "end_dt": end_dt,
+            },
         )
 
-    now = datetime.now(timezone.utc)
-    if start_time is None and end_time is None:
-        end_dt = now
-        start_dt = end_dt - timedelta(hours=24)
-    else:
-        start_dt = datetime.fromtimestamp(start_time / 1000, tz=timezone.utc)
-        end_dt = datetime.fromtimestamp(end_time / 1000, tz=timezone.utc) if end_time is not None else now
-
-    if start_dt >= end_dt:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="start_time은 end_time보다 이전이어야 합니다.",
-        )
+        return [
+            BioMatricsAggregate(
+                start_time=int(row["recorded_at"].timestamp() * 1000),
+                end_time=int(row["recorded_at"].timestamp() * 1000),
+                hr=row["hr"],
+                rr=row["rr"],
+                temp=row["temp"],
+                spo2=row["spo2"],
+            )
+            for row in result.mappings()
+        ]
 
     bucket_seconds = records_interval * 60
     query = text("""
@@ -160,6 +289,82 @@ async def read_biomatrix_aggregates(
         )
 
     return aggregates
+
+
+@router.get("/hr", response_model=list[BioMetricAggregate], status_code=status.HTTP_200_OK)
+async def read_hr_aggregates(
+        *,
+        patient_id: str = Depends(get_current_patient_id),
+        db: AsyncSession = Depends(get_db),
+        records_interval: int = Query(..., ge=0, description="Aggregation interval in minutes. 0이면 원본 데이터를 반환합니다."),
+        start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
+        end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
+):
+    return await read_single_biometric(
+        patient_id=patient_id,
+        db=db,
+        metric_name="hr",
+        records_interval=records_interval,
+        start_time=start_time,
+        end_time=end_time,
+    )
+
+
+@router.get("/rr", response_model=list[BioMetricAggregate], status_code=status.HTTP_200_OK)
+async def read_rr_aggregates(
+        *,
+        patient_id: str = Depends(get_current_patient_id),
+        db: AsyncSession = Depends(get_db),
+        records_interval: int = Query(..., ge=0, description="Aggregation interval in minutes. 0이면 원본 데이터를 반환합니다."),
+        start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
+        end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
+):
+    return await read_single_biometric(
+        patient_id=patient_id,
+        db=db,
+        metric_name="rr",
+        records_interval=records_interval,
+        start_time=start_time,
+        end_time=end_time,
+    )
+
+
+@router.get("/temp", response_model=list[BioMetricAggregate], status_code=status.HTTP_200_OK)
+async def read_temp_aggregates(
+        *,
+        patient_id: str = Depends(get_current_patient_id),
+        db: AsyncSession = Depends(get_db),
+        records_interval: int = Query(..., ge=0, description="Aggregation interval in minutes. 0이면 원본 데이터를 반환합니다."),
+        start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
+        end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
+):
+    return await read_single_biometric(
+        patient_id=patient_id,
+        db=db,
+        metric_name="temp",
+        records_interval=records_interval,
+        start_time=start_time,
+        end_time=end_time,
+    )
+
+
+@router.get("/spo2", response_model=list[BioMetricAggregate], status_code=status.HTTP_200_OK)
+async def read_spo2_aggregates(
+        *,
+        patient_id: str = Depends(get_current_patient_id),
+        db: AsyncSession = Depends(get_db),
+        records_interval: int = Query(..., ge=0, description="Aggregation interval in minutes. 0이면 원본 데이터를 반환합니다."),
+        start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
+        end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
+):
+    return await read_single_biometric(
+        patient_id=patient_id,
+        db=db,
+        metric_name="spo2",
+        records_interval=records_interval,
+        start_time=start_time,
+        end_time=end_time,
+    )
 
 @router.post("/ppg", status_code=status.HTTP_200_OK)
 async def collect_ppg_signal(
