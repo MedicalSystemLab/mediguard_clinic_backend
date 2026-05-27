@@ -13,7 +13,7 @@ from .security import (
     create_patient_refresh_token,
     create_patient_access_token
 )
-from .auth import get_current_user_id
+from .auth import get_current_user_id, get_current_user_payload
 from .redis import redis_manager
 from .kafka import kafka_producer
 
@@ -32,6 +32,7 @@ __all__ = [
     "create_patient_refresh_token",
     "create_patient_access_token",
     "get_current_user_id",
+    "get_current_user_payload",
     "redis_manager",
     "kafka_producer",
 ]

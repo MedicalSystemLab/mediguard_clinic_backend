@@ -4,7 +4,9 @@ import faust
 import time
 from datetime import datetime, timezone
 
-from common.schemas.events import BiosignalECGPPGEvent
+from common.core.config import settings
+from common.core.kafka_producer import publish_event
+from common.schemas.events import BiosignalBPMeasuredEvent, BiosignalECGPPGEvent
 from common.db.session import SessionLocal
 from biosignal.app.models.biosignals import BPInitLog, BPMeasureLog
 from consumer_analysis.app.main import app, biosignal_topic
@@ -197,13 +199,37 @@ async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list, start_tim
             return False
 
         predicted_sbp, predicted_dbp = bp_manager.predict_blood_pressure(signal_features)
+        measured_sbp = base_sbp + predicted_sbp
+        measured_dbp = base_dbp + predicted_dbp
+        started_at_dt = datetime.fromtimestamp(start_time, tz=timezone.utc)
+        ended_at_dt = datetime.fromtimestamp(end_time, tz=timezone.utc)
 
         bp_measure_log = BPMeasureLog(patient_id=patient_id, base_sbp=base_sbp, base_dbp=base_dbp,
-                                      predicted_sbp=base_sbp + predicted_sbp, predicted_dbp=base_dbp + predicted_dbp,
-                                      started_at=datetime.fromtimestamp(start_time, tz=timezone.utc),
-                                      ended_at=datetime.fromtimestamp(end_time, tz=timezone.utc))
+                                      predicted_sbp=measured_sbp, predicted_dbp=measured_dbp,
+                                      started_at=started_at_dt,
+                                      ended_at=ended_at_dt)
         db.add(bp_measure_log)
         await db.commit()
+
+        measured_event = BiosignalBPMeasuredEvent(
+            patient_id=patient_id,
+            base_sbp=base_sbp,
+            base_dbp=base_dbp,
+            predicted_sbp=measured_sbp,
+            predicted_dbp=measured_dbp,
+            started_at=int(started_at_dt.timestamp() * 1000),
+            ended_at=int(ended_at_dt.timestamp() * 1000),
+            recorded_at=int(datetime.now(timezone.utc).timestamp() * 1000),
+        )
+        try:
+            await publish_event(
+                topic=settings.KAFKA_TOPIC_BIOSIGNAL,
+                event=measured_event.model_dump(),
+                key=patient_id,
+            )
+        except Exception as e:
+            logger.error(f"Failed to publish BP measured event for patient_id {patient_id}: {e}", exc_info=True)
+
         return True
 
     # TODO: ML 추론 파이프라인 연결 (BP 추정 등)

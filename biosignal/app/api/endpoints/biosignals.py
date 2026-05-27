@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from biosignal.app.schemas.biosignal import ECGBiosignal, PPGBiosignal, RESPBiosignal, ECGAndPPGSignal, \
     BPAnalysisInitParams
-from biosignal.app.schemas.biosignal import BioMatrics as BioMatricsRequest, BioMatricsAggregate, BioMetricAggregate
+from biosignal.app.schemas.biosignal import BioMatrics as BioMatricsRequest, BioMatricsAggregate, BioMetricAggregate, \
+    BPMeasureAggregate
 from common.core.config import settings
 from common.core.auth import get_current_patient_id
 from common.core.kafka_producer import publish_event
@@ -366,6 +367,53 @@ async def read_spo2_aggregates(
         start_time=start_time,
         end_time=end_time,
     )
+
+
+@router.get("/bp", response_model=list[BPMeasureAggregate], status_code=status.HTTP_200_OK)
+async def read_bp_measures(
+        *,
+        patient_id: UUID = Query(..., description="조회할 환자 UUID"),
+        db: AsyncSession = Depends(get_db),
+        start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
+        end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
+):
+    start_dt, end_dt = get_biomatrix_time_range(start_time, end_time)
+    query = text("""
+        SELECT
+            base_sbp,
+            base_dbp,
+            predicted_sbp,
+            predicted_dbp,
+            started_at,
+            ended_at,
+            created_at
+        FROM biosignal.bp_measure_log
+        WHERE patient_id = CAST(:patient_id AS uuid)
+          AND created_at >= :start_dt
+          AND created_at <= :end_dt
+        ORDER BY created_at
+    """)
+    result = await db.execute(
+        query,
+        {
+            "patient_id": str(patient_id),
+            "start_dt": start_dt,
+            "end_dt": end_dt,
+        },
+    )
+
+    return [
+        BPMeasureAggregate(
+            start_time=int(row["started_at"].timestamp() * 1000),
+            end_time=int(row["ended_at"].timestamp() * 1000),
+            recorded_at=int(row["created_at"].timestamp() * 1000),
+            base_sbp=row["base_sbp"],
+            base_dbp=row["base_dbp"],
+            predicted_sbp=row["predicted_sbp"],
+            predicted_dbp=row["predicted_dbp"],
+        )
+        for row in result.mappings()
+    ]
 
 @router.post("/ppg", status_code=status.HTTP_200_OK)
 async def collect_ppg_signal(

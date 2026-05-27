@@ -95,6 +95,18 @@ class BiosignalBPInitEvent(BaseModel):
     ended_at: int
 
 
+class BiosignalBPMeasuredEvent(BaseModel):
+    event_type: str = "biosignal.BP.measured"
+    patient_id: str
+    base_sbp: float
+    base_dbp: float
+    predicted_sbp: float
+    predicted_dbp: float
+    started_at: int
+    ended_at: int
+    recorded_at: int
+
+
 class ClinicalEvent(BaseModel):
     """Clinical event schema (template for future use)"""
     event_type: str

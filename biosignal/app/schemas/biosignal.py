@@ -37,6 +37,15 @@ class BioMetricAggregate(BaseModel):
     end_time: int
     value: float | None = None
 
+class BPMeasureAggregate(BaseModel):
+    start_time: int
+    end_time: int
+    recorded_at: int
+    base_sbp: float
+    base_dbp: float
+    predicted_sbp: float
+    predicted_dbp: float
+
 class BPAnalysisInitParams(BaseModel):
     # Base Timing (4)
     pttf: float
