@@ -5,6 +5,9 @@ class UserRegister(BaseModel):
     username: str
     password: str
     practitioner_name: str
+    rule: str | None = None
+    department_id: str | None = None
+    ward_id: str | None = None
 
 
 

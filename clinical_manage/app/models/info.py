@@ -28,6 +28,12 @@ class PractitionerProfiles(ClinicBase):
         UUID(as_uuid=True), primary_key=True, nullable=False, index=True)
     practitioner_name: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     rule: Mapped[PractitionerRoleEnum] = mapped_column(Enum(PractitionerRoleEnum), nullable=False, default=PractitionerRoleEnum.UNSPECIFIED)
+    department_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), sa.ForeignKey("clinical_manage.department.department_id", ondelete="SET NULL"),
+        nullable=True)
+    ward_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), sa.ForeignKey("clinical_manage.ward.ward_id", ondelete="SET NULL"),
+        nullable=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
@@ -74,9 +80,15 @@ class PatientProfile(ClinicBase):
     gender : Mapped[GenderEnum] = mapped_column(Enum(GenderEnum), nullable=False, default=GenderEnum.U)
     birth : Mapped[str] = mapped_column(String(255), nullable=False)
     is_admitted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    department_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), sa.ForeignKey("clinical_manage.department.department_id"), nullable=True)
-    admitted_ward_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), sa.ForeignKey("clinical_manage.ward.ward_id"), nullable=True)
-    manage_practitioner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), sa.ForeignKey("clinical_manage.practitioner_profiles.practitioner_id"), nullable=True)
+    department_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), sa.ForeignKey("clinical_manage.department.department_id", ondelete="SET NULL"),
+        nullable=True)
+    admitted_ward_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), sa.ForeignKey("clinical_manage.ward.ward_id", ondelete="SET NULL"),
+        nullable=True)
+    manage_practitioner_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), sa.ForeignKey("clinical_manage.practitioner_profiles.practitioner_id", ondelete="SET NULL"),
+        nullable=True)
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     discharged_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=True)
 

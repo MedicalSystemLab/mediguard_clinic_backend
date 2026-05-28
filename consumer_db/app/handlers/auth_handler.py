@@ -17,6 +17,10 @@ async def handle_user_registered(event_data: dict):
     try:
         username = event_data.get('username')
         password = event_data.get('password')
+        practitioner_name = event_data.get('practitioner_name')
+        rule = event_data.get('rule')
+        department_id = event_data.get('department_id')
+        ward_id = event_data.get('ward_id')
 
         async with SessionLocal() as db:
             result = await db.execute(select(User).where(User.username == username))
@@ -30,7 +34,16 @@ async def handle_user_registered(event_data: dict):
             db.add(user)
             await db.flush()
 
-            profile = PractitionerProfiles(practitioner_id=user.user_id)
+            profile_kwargs = {
+                "practitioner_id": user.user_id,
+                "practitioner_name": practitioner_name or username,
+                "department_id": department_id,
+                "ward_id": ward_id,
+            }
+            if rule:
+                profile_kwargs["rule"] = rule
+
+            profile = PractitionerProfiles(**profile_kwargs)
             db.add(profile)
             await db.commit()
 

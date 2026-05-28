@@ -13,11 +13,16 @@ class Manage(ClinicBase):
         primary_key=True, default=uuid.uuid4, index=True)
     practitioner_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), index=True, nullable=False)
-    patient_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), sa.ForeignKey("clinical_manage.patient_profile.patient_id", ondelete="CASCADE"), unique=True, nullable=False)
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), sa.ForeignKey("clinical_manage.patient_profile.patient_id", ondelete="CASCADE"),
+        index=True, nullable=False)
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
 
-    __table_args__ = {"schema": "clinical_manage"}
+    __table_args__ = (
+        UniqueConstraint("practitioner_id", "patient_id", name="uq_manage_practitioner_patient"),
+        {"schema": "clinical_manage"},
+    )
 
 
 class FavoritePatient(ClinicBase):

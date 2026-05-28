@@ -33,6 +33,10 @@ async def register(
     event = UserRegisteredEvent(
         username=user_in.username,
         password=user_in.password,
+        practitioner_name=user_in.practitioner_name,
+        rule=user_in.rule,
+        department_id=user_in.department_id,
+        ward_id=user_in.ward_id,
     )
     await publish_event(
         topic=settings.KAFKA_TOPIC_AUTH,

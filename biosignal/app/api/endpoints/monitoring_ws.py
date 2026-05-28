@@ -119,9 +119,26 @@ async def can_access_patient(token_data: TokenPayload, patient_id: UUID) -> bool
         result = await db.execute(
             text("""
                 SELECT 1
-                FROM clinical_manage.manage
-                WHERE practitioner_id = CAST(:user_id AS uuid)
-                  AND patient_id = CAST(:patient_id AS uuid)
+                FROM clinical_manage.patient_profile patient
+                LEFT JOIN clinical_manage.practitioner_profiles practitioner
+                  ON practitioner.practitioner_id = CAST(:user_id AS uuid)
+                WHERE patient.patient_id = CAST(:patient_id AS uuid)
+                  AND (
+                    EXISTS (
+                      SELECT 1
+                      FROM clinical_manage.manage manage
+                      WHERE manage.practitioner_id = CAST(:user_id AS uuid)
+                        AND manage.patient_id = patient.patient_id
+                    )
+                    OR (
+                      practitioner.department_id IS NOT NULL
+                      AND practitioner.department_id = patient.department_id
+                    )
+                    OR (
+                      practitioner.ward_id IS NOT NULL
+                      AND practitioner.ward_id = patient.admitted_ward_id
+                    )
+                  )
                 LIMIT 1
             """),
             {"user_id": token_data.sub, "patient_id": str(patient_id)},
