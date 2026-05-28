@@ -6,11 +6,11 @@ api_router.include_router(manage.router, prefix="/manage", tags=["manage"])
 api_router.include_router(favorite.router, prefix="/favorite", tags=["favorite"])
 api_router.include_router(
     admin_department.router,
-    prefix="/admin/departments",
+    prefix="/manage/admin/departments",
     tags=["admin-departments"],
 )
 api_router.include_router(
     admin_practitioner.router,
-    prefix="/admin/practitioners",
+    prefix="/manage/admin/practitioners",
     tags=["admin-practitioners"],
 )
