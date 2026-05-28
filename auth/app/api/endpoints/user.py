@@ -71,6 +71,7 @@ async def user_login(
 
     user_id = str(user.user_id)
     permission = user.permissions.value
+    is_reset_password = user.is_reset_password
 
     data = {
         "userId" : user_id,
@@ -81,6 +82,7 @@ async def user_login(
         "access_token": create_user_access_token(data),
         "refresh_token": create_user_refresh_token(data),
         "token_type": "bearer",
+        "is_reset_password": is_reset_password
     }
 
 

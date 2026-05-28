@@ -339,7 +339,6 @@ def create_patient_refresh_token(data: dict | Any, expires_delta: timedelta | No
     """Refresh Token 생성"""
 
     sub = data.get("PatientId")
-    permissions = data.get("permissions")
 
     if expires_delta:
         expire = datetime.now(UTC) + expires_delta

@@ -21,18 +21,18 @@ class PractitionerRoleEnum(enum.Enum):
     NP = "NP"  # 전문간호사
     OTHER = "OTHER"  # 기타
 
+# 병원 의료진 정보
 class PractitionerProfiles(ClinicBase):
     __tablename__ = "practitioner_profiles"
 
     practitioner_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, nullable=False, index=True)
     practitioner_name: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    practitioner_en_name: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     rule: Mapped[PractitionerRoleEnum] = mapped_column(Enum(PractitionerRoleEnum), nullable=False, default=PractitionerRoleEnum.UNSPECIFIED)
+    license_number: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     department_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), sa.ForeignKey("clinical_manage.department.department_id", ondelete="SET NULL"),
-        nullable=True)
-    ward_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), sa.ForeignKey("clinical_manage.ward.ward_id", ondelete="SET NULL"),
         nullable=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
@@ -48,13 +48,18 @@ class Department(ClinicBase):
         primary_key=True, default=uuid.uuid4, index=True
     )
     department_name: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    department_en_name: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    department_code: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    department_manager_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), sa.ForeignKey("clinical_manage.practitioner_profiles.practitioner_id", ondelete="SET NULL"),
+        nullable=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     __table_args__ = {"schema": "clinical_manage"}
 
-
+# 병동 정보
 class Ward(ClinicBase):
     __tablename__ = "ward"
 
@@ -63,6 +68,12 @@ class Ward(ClinicBase):
         primary_key=True, default=uuid.uuid4, index=True
     )
     ward_name: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    ward_en_name: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    ward_code: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    ward_manage_department_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), sa.ForeignKey("clinical_manage.department.department_id", ondelete="SET NULL"),
+        nullable=True)
+    ward_bed_count: Mapped[Integer] = mapped_column(Integer, nullable=False, default=0)
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
