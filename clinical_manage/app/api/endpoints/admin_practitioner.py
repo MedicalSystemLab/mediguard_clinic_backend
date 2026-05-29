@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,24 +21,28 @@ router = APIRouter()
 
 
 class PractitionerCreate(BaseModel):
-    username: str
-    password: str
-    practitioner_name: str
-    practitioner_en_name: str
-    license_number: str
-    rule: PractitionerRoleEnum = PractitionerRoleEnum.UNSPECIFIED
-    department_id: UUID | None = None
+    model_config = ConfigDict(populate_by_name=True)
+
+    username: str = Field(alias="employeeId")
+    password: str = Field(alias="tempPassword")
+    practitioner_name: str = Field(alias="name")
+    practitioner_en_name: str = Field(alias="enName")
+    license_number: str = Field(alias="license")
+    rule: PractitionerRoleEnum = Field(default=PractitionerRoleEnum.UNSPECIFIED, alias="role")
+    department_id: UUID | None = Field(default=None, alias="dept")
     permissions: AuthPermissionEnum = AuthPermissionEnum.practitioner
 
 
 class PractitionerUpdate(BaseModel):
-    username: str | None = None
-    password: str | None = None
-    practitioner_name: str | None = None
-    practitioner_en_name: str | None = None
-    license_number: str | None = None
-    rule: PractitionerRoleEnum | None = None
-    department_id: UUID | None = None
+    model_config = ConfigDict(populate_by_name=True)
+
+    username: str | None = Field(default=None, alias="employeeId")
+    password: str | None = Field(default=None, alias="tempPassword")
+    practitioner_name: str | None = Field(default=None, alias="name")
+    practitioner_en_name: str | None = Field(default=None, alias="enName")
+    license_number: str | None = Field(default=None, alias="license")
+    rule: PractitionerRoleEnum | None = Field(default=None, alias="role")
+    department_id: UUID | None = Field(default=None, alias="dept")
     is_active: bool | None = None
     permissions: AuthPermissionEnum | None = None
 

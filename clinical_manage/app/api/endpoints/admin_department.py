@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,17 +16,21 @@ router = APIRouter()
 
 
 class DepartmentCreate(BaseModel):
-    department_name: str
-    department_en_name: str
-    department_code: str
-    department_manager_id: UUID | None = None
+    model_config = ConfigDict(populate_by_name=True)
+
+    department_name: str = Field(alias="name")
+    department_en_name: str = Field(alias="enName")
+    department_code: str = Field(alias="code")
+    department_manager_id: UUID | None = Field(default=None, alias="headPractitioner")
 
 
 class DepartmentUpdate(BaseModel):
-    department_name: str | None = None
-    department_en_name: str | None = None
-    department_code: str | None = None
-    department_manager_id: UUID | None = None
+    model_config = ConfigDict(populate_by_name=True)
+
+    department_name: str | None = Field(default=None, alias="name")
+    department_en_name: str | None = Field(default=None, alias="enName")
+    department_code: str | None = Field(default=None, alias="code")
+    department_manager_id: UUID | None = Field(default=None, alias="headPractitioner")
 
 
 class DepartmentResponse(BaseModel):
