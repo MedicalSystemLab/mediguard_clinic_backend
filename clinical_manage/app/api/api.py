@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from .endpoints import admin_department, admin_practitioner, favorite, manage
+from .endpoints import admin_department, admin_practitioner, admin_ward, favorite, manage
 
 api_router = APIRouter()
 api_router.include_router(manage.router, prefix="/manage", tags=["manage"])
@@ -13,4 +13,9 @@ api_router.include_router(
     admin_practitioner.router,
     prefix="/manage/admin/practitioners",
     tags=["admin-practitioners"],
+)
+api_router.include_router(
+    admin_ward.router,
+    prefix="/manage/admin/wards",
+    tags=["admin-wards"],
 )

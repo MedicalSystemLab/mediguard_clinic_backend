@@ -74,6 +74,7 @@ class Ward(ClinicBase):
         UUID(as_uuid=True), sa.ForeignKey("clinical_manage.department.department_id", ondelete="SET NULL"),
         nullable=True)
     ward_bed_count: Mapped[Integer] = mapped_column(Integer, nullable=False, default=0)
+    ward_loc: Mapped[str] = mapped_column(String(255), nullable=False)
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
