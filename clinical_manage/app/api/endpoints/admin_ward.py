@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from clinical_manage.app.api.endpoints.admin_practitioner import get_current_admin
+from clinical_manage.app.api.endpoints.admin_practitioner import get_current_admin, get_current_admin_or_practitioner
 from clinical_manage.app.models.info import Department, Ward
 from common.core.auth import TokenPayload, get_current_user_payload
 from common.db.session import get_db
@@ -122,7 +122,7 @@ async def read_wards(
     token_payload: TokenPayload = Depends(get_current_user_payload),
     include_deleted: bool = Query(False),
 ):
-    await get_current_admin(db=db, token_payload=token_payload)
+    await get_current_admin_or_practitioner(db=db, token_payload=token_payload)
 
     conditions = []
     if not include_deleted:
@@ -149,7 +149,7 @@ async def read_ward(
     db: AsyncSession = Depends(get_db),
     token_payload: TokenPayload = Depends(get_current_user_payload),
 ):
-    await get_current_admin(db=db, token_payload=token_payload)
+    await get_current_admin_or_practitioner(db=db, token_payload=token_payload)
     return await get_ward_or_404(db=db, ward_id=ward_id)
 
 

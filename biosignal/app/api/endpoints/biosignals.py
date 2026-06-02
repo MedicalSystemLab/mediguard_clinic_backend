@@ -10,7 +10,7 @@ from biosignal.app.schemas.biosignal import ECGBiosignal, PPGBiosignal, RESPBios
 from biosignal.app.schemas.biosignal import BioMatrics as BioMatricsRequest, BioMatricsAggregate, BioMetricAggregate, \
     BPMeasureAggregate
 from common.core.config import settings
-from common.core.auth import get_current_patient_id
+from common.core.auth import TokenPayload, get_current_patient_id, get_current_user_payload
 from common.core.kafka_producer import publish_event
 from common.db.session import get_db
 from common.schemas.events import BiosignalECGEvent, BiosignalPPGEvent, BiosignalRESPEvent, BiosignalECGPPGEvent, \
@@ -19,6 +19,8 @@ from common.schemas.events import BiosignalECGEvent, BiosignalPPGEvent, Biosigna
 router = APIRouter()
 
 BIOMETRIC_COLUMNS = {"hr": "hr", "rr": "rr", "temp": "temp", "spo2": "spo2"}
+ADMINISTRATOR_PERMISSION = "administrator"
+PRACTITIONER_PERMISSION = "practitioner"
 
 
 def get_biomatrix_time_range(start_time: int | None, end_time: int | None) -> tuple[datetime, datetime]:
@@ -129,6 +131,70 @@ async def read_single_biometric(
 
     return aggregates
 
+
+async def ensure_practitioner_can_read_patient(
+        *,
+        db: AsyncSession,
+        token_payload: TokenPayload,
+        patient_id: UUID,
+) -> None:
+    user_result = await db.execute(
+        text("""
+            SELECT permissions, is_active
+            FROM auth.users
+            WHERE user_id = CAST(:user_id AS uuid)
+            LIMIT 1
+        """),
+        {"user_id": token_payload.sub},
+    )
+    user = user_result.mappings().one_or_none()
+    if user is None or not user["is_active"]:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="사용자를 찾을 수 없거나 비활성화된 계정입니다.",
+        )
+
+    permission = user["permissions"]
+    if permission == ADMINISTRATOR_PERMISSION:
+        return
+
+    if permission != PRACTITIONER_PERMISSION:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="병원직 권한이 필요합니다.",
+        )
+
+    access_result = await db.execute(
+        text("""
+            SELECT 1
+            FROM clinical_manage.patient_profile patient
+            LEFT JOIN clinical_manage.practitioner_profiles practitioner
+              ON practitioner.practitioner_id = CAST(:user_id AS uuid)
+             AND practitioner.is_deleted IS FALSE
+            WHERE patient.patient_id = CAST(:patient_id AS uuid)
+              AND (
+                patient.manage_practitioner_id = CAST(:user_id AS uuid)
+                OR EXISTS (
+                  SELECT 1
+                  FROM clinical_manage.manage manage
+                  WHERE manage.practitioner_id = CAST(:user_id AS uuid)
+                    AND manage.patient_id = patient.patient_id
+                )
+                OR (
+                  practitioner.department_id IS NOT NULL
+                  AND practitioner.department_id = patient.department_id
+                )
+              )
+            LIMIT 1
+        """),
+        {"user_id": token_payload.sub, "patient_id": str(patient_id)},
+    )
+    if access_result.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="해당 환자의 생체신호를 조회할 권한이 없습니다.",
+        )
+
 @router.get("/health", status_code=status.HTTP_200_OK)
 def health_check():
     return {"status": "ok"}
@@ -197,15 +263,17 @@ async def collect_biomatrix_signal(
 
     return
 
-@router.get("/biomatrix", response_model=list[BioMatricsAggregate], status_code=status.HTTP_200_OK)
+@router.get("/biomatrix/{patient_id}", response_model=list[BioMatricsAggregate], status_code=status.HTTP_200_OK)
 async def read_biomatrix_aggregates(
         *,
-        patient_id: UUID = Query(..., description="조회할 환자 UUID"),
+        patient_id: UUID,
         db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_user_payload),
         records_interval: int = Query(..., ge=0, description="Aggregation interval in minutes. 0이면 원본 데이터를 반환합니다."),
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
         end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
 ):
+    await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
     start_dt, end_dt = get_biomatrix_time_range(start_time, end_time)
 
     if records_interval == 0:
@@ -293,15 +361,17 @@ async def read_biomatrix_aggregates(
     return aggregates
 
 
-@router.get("/hr", response_model=list[BioMetricAggregate], status_code=status.HTTP_200_OK)
+@router.get("/hr/{patient_id}", response_model=list[BioMetricAggregate], status_code=status.HTTP_200_OK)
 async def read_hr_aggregates(
         *,
-        patient_id: UUID = Query(..., description="조회할 환자 UUID"),
+        patient_id: UUID,
         db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_user_payload),
         records_interval: int = Query(..., ge=0, description="Aggregation interval in minutes. 0이면 원본 데이터를 반환합니다."),
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
         end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
 ):
+    await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
     return await read_single_biometric(
         patient_id=patient_id,
         db=db,
@@ -312,15 +382,17 @@ async def read_hr_aggregates(
     )
 
 
-@router.get("/rr", response_model=list[BioMetricAggregate], status_code=status.HTTP_200_OK)
+@router.get("/rr/{patient_id}", response_model=list[BioMetricAggregate], status_code=status.HTTP_200_OK)
 async def read_rr_aggregates(
         *,
-        patient_id: UUID = Query(..., description="조회할 환자 UUID"),
+        patient_id: UUID,
         db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_user_payload),
         records_interval: int = Query(..., ge=0, description="Aggregation interval in minutes. 0이면 원본 데이터를 반환합니다."),
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
         end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
 ):
+    await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
     return await read_single_biometric(
         patient_id=patient_id,
         db=db,
@@ -331,15 +403,17 @@ async def read_rr_aggregates(
     )
 
 
-@router.get("/temp", response_model=list[BioMetricAggregate], status_code=status.HTTP_200_OK)
+@router.get("/temp/{patient_id}", response_model=list[BioMetricAggregate], status_code=status.HTTP_200_OK)
 async def read_temp_aggregates(
         *,
-        patient_id: UUID = Query(..., description="조회할 환자 UUID"),
+        patient_id: UUID,
         db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_user_payload),
         records_interval: int = Query(..., ge=0, description="Aggregation interval in minutes. 0이면 원본 데이터를 반환합니다."),
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
         end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
 ):
+    await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
     return await read_single_biometric(
         patient_id=patient_id,
         db=db,
@@ -350,15 +424,17 @@ async def read_temp_aggregates(
     )
 
 
-@router.get("/spo2", response_model=list[BioMetricAggregate], status_code=status.HTTP_200_OK)
+@router.get("/spo2/{patient_id}", response_model=list[BioMetricAggregate], status_code=status.HTTP_200_OK)
 async def read_spo2_aggregates(
         *,
-        patient_id: UUID = Query(..., description="조회할 환자 UUID"),
+        patient_id: UUID,
         db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_user_payload),
         records_interval: int = Query(..., ge=0, description="Aggregation interval in minutes. 0이면 원본 데이터를 반환합니다."),
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
         end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
 ):
+    await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
     return await read_single_biometric(
         patient_id=patient_id,
         db=db,
@@ -369,14 +445,16 @@ async def read_spo2_aggregates(
     )
 
 
-@router.get("/bp", response_model=list[BPMeasureAggregate], status_code=status.HTTP_200_OK)
+@router.get("/bp/{patient_id}", response_model=list[BPMeasureAggregate], status_code=status.HTTP_200_OK)
 async def read_bp_measures(
         *,
-        patient_id: UUID = Query(..., description="조회할 환자 UUID"),
+        patient_id: UUID,
         db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_user_payload),
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
         end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
 ):
+    await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
     start_dt, end_dt = get_biomatrix_time_range(start_time, end_time)
     query = text("""
         SELECT

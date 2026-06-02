@@ -120,6 +120,31 @@ async def get_current_admin(
     return user
 
 
+async def get_current_admin_or_practitioner(
+    *,
+    db: AsyncSession,
+    token_payload: TokenPayload,
+) -> User:
+    result = await db.execute(select(User).where(User.user_id == token_payload.sub))
+    user = result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="사용자를 찾을 수 없거나 비활성화된 계정입니다.",
+        )
+
+    if user.permissions not in {
+        AuthPermissionEnum.administrator,
+        AuthPermissionEnum.practitioner,
+    }:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="관리자 또는 의료진 권한이 필요합니다.",
+        )
+
+    return user
+
+
 async def ensure_department_exists(db: AsyncSession, department_id: UUID | None) -> None:
     if department_id is None:
         return
@@ -242,7 +267,7 @@ async def read_patients(
     token_payload: TokenPayload = Depends(get_current_user_payload),
     include_inactive: bool = Query(False),
 ):
-    await get_current_admin(db=db, token_payload=token_payload)
+    await get_current_admin_or_practitioner(db=db, token_payload=token_payload)
 
     conditions = []
     if not include_inactive:
@@ -270,7 +295,7 @@ async def read_patient(
     db: AsyncSession = Depends(get_db),
     token_payload: TokenPayload = Depends(get_current_user_payload),
 ):
-    await get_current_admin(db=db, token_payload=token_payload)
+    await get_current_admin_or_practitioner(db=db, token_payload=token_payload)
     patient, profile = await get_patient_or_404(db=db, patient_id=patient_id)
     return to_response(patient, profile)
 
@@ -291,7 +316,7 @@ async def create_patient(
     db: AsyncSession = Depends(get_db),
     token_payload: TokenPayload = Depends(get_current_user_payload),
 ):
-    await get_current_admin(db=db, token_payload=token_payload)
+    await get_current_admin_or_practitioner(db=db, token_payload=token_payload)
     await ensure_patient_refs_exist(
         db,
         department_id=patient_in.department_id,
@@ -360,7 +385,7 @@ async def update_patient(
     db: AsyncSession = Depends(get_db),
     token_payload: TokenPayload = Depends(get_current_user_payload),
 ):
-    await get_current_admin(db=db, token_payload=token_payload)
+    await get_current_admin_or_practitioner(db=db, token_payload=token_payload)
     patient, profile = await get_patient_or_404(db=db, patient_id=patient_id, include_inactive=True)
 
     update_data = patient_in.model_dump(exclude_unset=True)
@@ -433,7 +458,7 @@ async def delete_patient(
     db: AsyncSession = Depends(get_db),
     token_payload: TokenPayload = Depends(get_current_user_payload),
 ):
-    await get_current_admin(db=db, token_payload=token_payload)
+    await get_current_admin_or_practitioner(db=db, token_payload=token_payload)
     patient, profile = await get_patient_or_404(db=db, patient_id=patient_id, include_inactive=True)
 
     patient.is_active = False
