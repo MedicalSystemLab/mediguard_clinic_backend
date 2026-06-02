@@ -44,8 +44,8 @@ class BioMatrixEvent(BaseModel):
     """Biosignal event schema (template for future use)"""
     event_type: str = "biosignal.biomatrix.received"
     patient_id: str
-    hr: float | None = None
-    rr: float | None = None
+    hr: int | None = None
+    rr: int | None = None
     spo2: float | None = None
     temperature: float | None = None
     recorded_at: int

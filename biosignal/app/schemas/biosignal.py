@@ -18,8 +18,8 @@ class RESPBiosignal(BaseModel):
     recorded_at: int
 
 class BioMatrics(BaseModel):
-    hr: float | None = None
-    rr: float | None = None
+    hr: int | None = None
+    rr: int | None = None
     spo2: float | None = None
     temperature: float | None = None
     recorded_at: int
@@ -27,8 +27,8 @@ class BioMatrics(BaseModel):
 class BioMatricsAggregate(BaseModel):
     start_time: int
     end_time: int
-    hr: float | None = None
-    rr: float | None = None
+    hr: int | None = None
+    rr: int | None = None
     temp: float | None = None
     spo2: float | None = None
 
