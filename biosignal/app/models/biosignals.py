@@ -1,6 +1,6 @@
 import uuid, uuid6
 import enum
-from sqlalchemy import String, UUID, TIMESTAMP, Enum, LargeBinary, Float
+from sqlalchemy import String, UUID, TIMESTAMP, Enum, LargeBinary, Float, INT
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 from biosignal.app.models.base import BiosignalBase
@@ -40,8 +40,8 @@ class BioMatrics(BiosignalBase):
 
     matrix_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid6.uuid7, nullable=False)
     patient_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-    hr: Mapped[int] = mapped_column(Float, nullable=True)
-    rr: Mapped[int] = mapped_column(Float, nullable=True)
+    hr: Mapped[int] = mapped_column(INT, nullable=True)
+    rr: Mapped[int] = mapped_column(INT, nullable=True)
     temp: Mapped[float] = mapped_column(Float, nullable=True)
     spo2: Mapped[float] = mapped_column(Float, nullable=True)
 
