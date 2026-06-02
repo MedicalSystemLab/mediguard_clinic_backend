@@ -389,9 +389,9 @@ async def read_bp_measures(
             created_at
         FROM biosignal.bp_measure_log
         WHERE patient_id = CAST(:patient_id AS uuid)
-          AND created_at >= :start_dt
-          AND created_at <= :end_dt
-        ORDER BY created_at
+          AND ended_at >= :start_dt
+          AND ended_at <= :end_dt
+        ORDER BY ended_at
     """)
     result = await db.execute(
         query,

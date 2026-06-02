@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import time
 from dataclasses import dataclass, field
 from uuid import UUID, uuid4
 
@@ -17,6 +18,7 @@ router = APIRouter()
 
 ADMINISTRATOR_PERMISSION = "administrator"
 PRACTITIONER_PERMISSION = "practitioner"
+BP_REALTIME_MAX_CLOCK_DIFF_MS = 20_000
 
 
 @dataclass
@@ -239,6 +241,17 @@ def build_realtime_payloads(event_data: dict) -> list[tuple[str, dict, bool]]:
         return [(patient_id, payload, False)]
 
     if event_type == "biosignal.BP.measured":
+        ended_at = event_data.get("ended_at")
+        try:
+            ended_at_ms = int(ended_at)
+        except (TypeError, ValueError):
+            logger.warning("Skipping BP measured event with invalid ended_at: %s", ended_at)
+            return []
+
+        current_time_ms = int(time.time() * 1000)
+        if abs(current_time_ms - ended_at_ms) >= BP_REALTIME_MAX_CLOCK_DIFF_MS:
+            return []
+
         payload = {
             "type": "bp.updated",
             "patient_id": patient_id,
@@ -248,7 +261,7 @@ def build_realtime_payloads(event_data: dict) -> list[tuple[str, dict, bool]]:
             "predicted_sbp": event_data.get("predicted_sbp"),
             "predicted_dbp": event_data.get("predicted_dbp"),
             "started_at": event_data.get("started_at"),
-            "ended_at": event_data.get("ended_at"),
+            "ended_at": ended_at,
         }
         return [(patient_id, payload, False)]
 
