@@ -24,6 +24,7 @@ class Token(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    is_reset_password: bool = False
 
 class PatientLogin(BaseModel):
     patient_number: str
