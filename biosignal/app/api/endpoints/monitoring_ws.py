@@ -165,7 +165,8 @@ async def filter_accessible_patient_ids(token_data: TokenPayload, patient_ids: s
                   ON practitioner.practitioner_id = CAST(:user_id AS uuid)
                 WHERE patient.patient_id = ANY(:patient_ids)
                   AND (
-                    EXISTS (
+                    patient.manage_practitioner_id = CAST(:user_id AS uuid)
+                    OR EXISTS (
                       SELECT 1
                       FROM clinical_manage.manage manage
                       WHERE manage.practitioner_id = CAST(:user_id AS uuid)
@@ -174,10 +175,6 @@ async def filter_accessible_patient_ids(token_data: TokenPayload, patient_ids: s
                     OR (
                       practitioner.department_id IS NOT NULL
                       AND practitioner.department_id = patient.department_id
-                    )
-                    OR (
-                      practitioner.ward_id IS NOT NULL
-                      AND practitioner.ward_id = patient.admitted_ward_id
                     )
                   )
             """).bindparams(bindparam("patient_ids", type_=ARRAY(PG_UUID(as_uuid=True))))
@@ -205,7 +202,8 @@ async def can_access_patient(token_data: TokenPayload, patient_id: UUID) -> bool
                   ON practitioner.practitioner_id = CAST(:user_id AS uuid)
                 WHERE patient.patient_id = CAST(:patient_id AS uuid)
                   AND (
-                    EXISTS (
+                    patient.manage_practitioner_id = CAST(:user_id AS uuid)
+                    OR EXISTS (
                       SELECT 1
                       FROM clinical_manage.manage manage
                       WHERE manage.practitioner_id = CAST(:user_id AS uuid)
@@ -214,10 +212,6 @@ async def can_access_patient(token_data: TokenPayload, patient_id: UUID) -> bool
                     OR (
                       practitioner.department_id IS NOT NULL
                       AND practitioner.department_id = patient.department_id
-                    )
-                    OR (
-                      practitioner.ward_id IS NOT NULL
-                      AND practitioner.ward_id = patient.admitted_ward_id
                     )
                   )
                 LIMIT 1
