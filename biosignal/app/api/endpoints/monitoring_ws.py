@@ -8,8 +8,7 @@ from uuid import UUID, uuid4
 from aiokafka import AIOKafkaConsumer
 from fastapi import APIRouter, Header, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from starlette.responses import StreamingResponse
-from sqlalchemy import bindparam, text
-from sqlalchemy.dialects.postgresql import ARRAY, UUID as PG_UUID
+from sqlalchemy import text
 
 from common.core.auth import TokenPayload, decode_authorization_payload, decode_token_payload
 from common.core.config import settings
@@ -150,45 +149,6 @@ def get_token_from_sse_request(authorization: str | None) -> TokenPayload:
     )
 
 
-async def filter_accessible_patient_ids(token_data: TokenPayload, patient_ids: set[str]) -> set[str]:
-    if not patient_ids:
-        return set()
-
-    if token_data.permissions == ADMINISTRATOR_PERMISSION:
-        return patient_ids
-
-    async with SessionLocal() as db:
-        query = text("""
-                SELECT patient.patient_id
-                FROM clinical_manage.patient_profile patient
-                LEFT JOIN clinical_manage.practitioner_profiles practitioner
-                  ON practitioner.practitioner_id = CAST(:user_id AS uuid)
-                WHERE patient.patient_id = ANY(:patient_ids)
-                  AND (
-                    patient.manage_practitioner_id = CAST(:user_id AS uuid)
-                    OR EXISTS (
-                      SELECT 1
-                      FROM clinical_manage.manage manage
-                      WHERE manage.practitioner_id = CAST(:user_id AS uuid)
-                        AND manage.patient_id = patient.patient_id
-                    )
-                    OR (
-                      practitioner.department_id IS NOT NULL
-                      AND practitioner.department_id = patient.department_id
-                    )
-                  )
-            """).bindparams(bindparam("patient_ids", type_=ARRAY(PG_UUID(as_uuid=True))))
-
-        result = await db.execute(
-            query,
-            {
-                "user_id": token_data.sub,
-                "patient_ids": [UUID(patient_id) for patient_id in patient_ids],
-            },
-        )
-        return {str(row["patient_id"]) for row in result.mappings()}
-
-
 async def can_access_patient(token_data: TokenPayload, patient_id: UUID) -> bool:
     if token_data.permissions == ADMINISTRATOR_PERMISSION:
         return True
@@ -325,11 +285,10 @@ async def monitoring_websocket(websocket: WebSocket):
                     await send_error(websocket, "Invalid patient_id in patient_ids")
                     continue
 
-                accessible_patient_ids = await filter_accessible_patient_ids(token_data, patient_ids)
-                await manager.set_home_patients(websocket, accessible_patient_ids)
+                await manager.set_home_patients(websocket, patient_ids)
                 await websocket.send_json({
                     "type": "home.subscribed",
-                    "patient_ids": list(accessible_patient_ids),
+                    "patient_ids": list(patient_ids),
                 })
                 continue
 
