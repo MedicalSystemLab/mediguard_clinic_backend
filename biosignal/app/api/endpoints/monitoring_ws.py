@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 from uuid import UUID, uuid4
 
 from aiokafka import AIOKafkaConsumer
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, Header, HTTPException, Request, WebSocket, WebSocketDisconnect, status
+from starlette.responses import StreamingResponse
 from sqlalchemy import text
 
 from common.core.auth import TokenPayload, decode_authorization_payload, decode_token_payload
@@ -88,6 +89,44 @@ manager = MonitoringConnectionManager()
 monitoring_consumer_task: asyncio.Task | None = None
 
 
+class BPSseConnectionManager:
+    def __init__(self) -> None:
+        self._subscriptions: dict[asyncio.Queue, set[str]] = {}
+        self._lock = asyncio.Lock()
+
+    async def subscribe(self, patient_id: str) -> asyncio.Queue:
+        queue = asyncio.Queue(maxsize=20)
+        async with self._lock:
+            self._subscriptions[queue] = {patient_id}
+        return queue
+
+    async def unsubscribe(self, queue: asyncio.Queue) -> None:
+        async with self._lock:
+            self._subscriptions.pop(queue, None)
+
+    async def broadcast(self, patient_id: str, payload: dict) -> None:
+        async with self._lock:
+            recipients = [
+                queue
+                for queue, patient_ids in self._subscriptions.items()
+                if patient_id in patient_ids
+            ]
+
+        for queue in recipients:
+            if queue.full():
+                try:
+                    queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    pass
+            try:
+                queue.put_nowait(payload)
+            except asyncio.QueueFull:
+                logger.warning("Dropping BP SSE payload for patient_id: %s", patient_id)
+
+
+bp_sse_manager = BPSseConnectionManager()
+
+
 def get_token_from_websocket(websocket: WebSocket) -> TokenPayload:
     token = websocket.query_params.get("token")
     if token:
@@ -98,6 +137,16 @@ def get_token_from_websocket(websocket: WebSocket) -> TokenPayload:
         return decode_authorization_payload(authorization)
 
     raise ValueError("Missing token")
+
+
+def get_token_from_sse_request(authorization: str | None) -> TokenPayload:
+    if authorization:
+        return decode_authorization_payload(authorization)
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Missing token",
+    )
 
 
 async def read_favorite_patient_ids(user_id: str) -> set[str]:
@@ -150,6 +199,74 @@ async def can_access_patient(token_data: TokenPayload, patient_id: UUID) -> bool
 
 async def send_error(websocket: WebSocket, message: str) -> None:
     await websocket.send_json({"type": "error", "message": message})
+
+
+def format_sse_event(event_name: str, payload: dict) -> str:
+    event_id = payload.get("timestamp") or payload.get("ended_at")
+    lines = []
+    if event_id is not None:
+        lines.append(f"id: {event_id}")
+    lines.append(f"event: {event_name}")
+    lines.append(f"data: {json.dumps(payload, ensure_ascii=False, separators=(',', ':'))}")
+    return "\n".join(lines) + "\n\n"
+
+
+@router.get("/bp/{patient_id}/sse")
+async def bp_measure_sse(
+        *,
+        patient_id: UUID,
+        request: Request,
+        authorization: str | None = Header(None, description="Bearer <token>"),
+):
+    token_data = get_token_from_sse_request(authorization)
+    patient_id_str = str(patient_id)
+
+    if token_data.permissions == "patient":
+        if token_data.sub != patient_id_str:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="해당 환자의 혈압 측정 결과를 구독할 권한이 없습니다.",
+            )
+    elif token_data.permissions in {PRACTITIONER_PERMISSION, ADMINISTRATOR_PERMISSION}:
+        if not await can_access_patient(token_data, patient_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="해당 환자의 혈압 측정 결과를 구독할 권한이 없습니다.",
+            )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="혈압 측정 결과를 구독할 권한이 없습니다.",
+        )
+
+    queue = await bp_sse_manager.subscribe(patient_id_str)
+
+    async def event_generator():
+        try:
+            yield ": connected\n\n"
+            while True:
+                if await request.is_disconnected():
+                    break
+
+                try:
+                    payload = await asyncio.wait_for(queue.get(), timeout=15)
+                except asyncio.TimeoutError:
+                    yield ": keep-alive\n\n"
+                    continue
+
+                yield format_sse_event("bp.updated", payload)
+        finally:
+            await bp_sse_manager.unsubscribe(queue)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.websocket("/ws/monitoring")
@@ -332,6 +449,8 @@ async def run_monitoring_consumer() -> None:
             async for message in consumer:
                 for patient_id, payload, detail_only in build_realtime_payloads(message.value):
                     await manager.broadcast(patient_id, payload, detail_only=detail_only)
+                    if payload.get("type") == "bp.updated":
+                        await bp_sse_manager.broadcast(patient_id, payload)
         except asyncio.CancelledError:
             raise
         except Exception as e:
