@@ -300,10 +300,6 @@ async def monitoring_websocket(websocket: WebSocket):
                     await send_error(websocket, "Invalid patient_id")
                     continue
 
-                if not await can_access_patient(token_data, patient_uuid):
-                    await send_error(websocket, "Forbidden patient subscription")
-                    continue
-
                 await manager.add_detail_patient(websocket, str(patient_uuid))
                 await websocket.send_json({
                     "type": "detail.subscribed",
