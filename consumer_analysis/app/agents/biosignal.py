@@ -1,6 +1,7 @@
 import json
 import logging
 import faust
+import math
 import time
 from datetime import datetime, timezone
 
@@ -23,6 +24,21 @@ PPG_ANALYSIS_THRESHOLD = ANALYSIS_WINDOW_SAMPLES
 # Dispatch table: event_type -> (pydantic model, analysis function)
 _HANDLERS = {}
 ECG_PPG_TO_BP = app.Table("ecg_ppg_to_bp", default=dict)
+
+BP_REQUIRED_FIELDS = (
+    "pttf", "pttd", "d_ptt", "d_ptt_norm",
+    "up_slope", "pw50", "dia_slope", "auc", "acdc",
+    "rr_mean", "rr_std",
+)
+
+
+def _invalid_bp_feature_names(features: BpFeatures) -> list[str]:
+    invalid = []
+    for field_name in BP_REQUIRED_FIELDS:
+        value = getattr(features, field_name)
+        if value is None or not math.isfinite(value):
+            invalid.append(field_name)
+    return invalid
 
 
 def _register(event_type: str, model_cls):
@@ -181,15 +197,30 @@ async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list, start_tim
             acdc=bp_init_log.acdc,
             rr_mean=bp_init_log.rrMean,
             rr_std=bp_init_log.rrStd,
-            corr_mean=bp_init_log.corrMean,
-            keep_ratio=bp_init_log.keepRatio,
+            corr_mean=0.0,
+            keep_ratio=0.0,
         )
+        invalid_base_features = _invalid_bp_feature_names(bp_features)
+        if invalid_base_features:
+            logger.warning(
+                f"Incomplete BPInitLog for patient_id: {patient_id}. "
+                f"Missing or invalid base features: {invalid_base_features}. "
+                "Skipping BP analysis."
+            )
+            return False
 
         bp_manager = BpManager('statics/global_delta_sbp_resta_remove_keepratio.onnx',
                                'statics/global_delta_dbp_resta_remove_keepratio.onnx', base_sbp, base_dbp, bp_features)
         signal_features = bp_manager.process_data(ecg, ppg)
         if signal_features is None:
             logger.warning(f"Failed to extract BP features for patient_id: {patient_id}. Skipping BP analysis.")
+            return False
+        invalid_signal_features = _invalid_bp_feature_names(signal_features)
+        if invalid_signal_features:
+            logger.warning(
+                f"Invalid signal BP features for patient_id: {patient_id}. "
+                f"Invalid features: {invalid_signal_features}. Skipping BP analysis."
+            )
             return False
 
         predicted_sbp, predicted_dbp = bp_manager.predict_blood_pressure(signal_features)

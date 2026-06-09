@@ -68,12 +68,6 @@ class BPAnalysisInitParams(BaseModel):
     baseSBP: float
     baseDBP: float
 
-    # corrMean: float
-    # keepRatio: float
-
-    baseSBP: float
-    baseDBP: float
-
     # 데이터 역추적을 위한 데이터의 시작과 끝 시간
     started_at: int
     ended_at: int

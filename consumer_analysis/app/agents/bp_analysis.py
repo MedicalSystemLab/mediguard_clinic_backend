@@ -37,7 +37,6 @@ class BpFeatures:
             self.pw50 - base_features.pw50,
             self.dia_slope - base_features.dia_slope,
             self.auc - base_features.auc,
-            self.corr_mean - base_features.corr_mean,
             self.d_ptt - base_features.d_ptt,
             self.d_ptt_norm - base_features.d_ptt_norm,
             base_value

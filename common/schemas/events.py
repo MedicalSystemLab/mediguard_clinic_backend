@@ -82,17 +82,12 @@ class BiosignalBPInitEvent(BaseModel):
     auc: float
     acdc: float
 
-    # HRV & Quality (3)
-    rrMean: float
     rrMean: float
     rrStd: float
 
     # BaseValue (2)
     baseSBP: float
     baseDBP: float
-
-    # corrMean: float
-    # keepRatio: float
 
     # 데이터 역 추적용 시간 값
     started_at: int
