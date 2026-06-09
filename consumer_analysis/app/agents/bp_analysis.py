@@ -155,8 +155,8 @@ class BpManager:
                 print("Not enough beats after correlation filtering.")
                 return None
 
-            corr_mean = np.mean(corr_values)
-            keep_ratio = len(kept_beats) / len(ir_beats)
+            self.corr_mean = np.mean(corr_values)
+            self.keep_ratio = len(kept_beats) / len(ir_beats)
 
             # 6. Final Template
             ir_template = np.mean(kept_beats, axis=0)
