@@ -35,6 +35,12 @@ class UserLogin(BaseModel):
     username: str
     password: str
 
+class UserPasswordReset(BaseModel):
+    password: str
+
+class UserPasswordResetResponse(BaseModel):
+    is_reset_password: bool
+
 class PatientLogin(BaseModel):
     patient_number: str
     patient_password: str

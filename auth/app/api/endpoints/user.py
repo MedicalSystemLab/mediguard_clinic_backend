@@ -3,12 +3,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from common.core.auth import get_current_user_id
-from common.core.security import verify_password, create_user_access_token, create_user_refresh_token
+from common.core.security import get_password_hash, verify_password, create_user_access_token, create_user_refresh_token
 from common.core.config import settings
 from common.core.kafka_producer import publish_event
 from common.db.session import get_db
 from common.schemas.events import UserRegisteredEvent
-from auth.app.schemas.auth import UserRegister, Token, UserLogin, UserMeResponse
+from auth.app.schemas.auth import UserRegister, Token, UserLogin, UserMeResponse, UserPasswordReset, UserPasswordResetResponse
 from auth.app.schemas.auth import User as UserSchema
 from auth.app.api.commons.crud_user import user as crud_user
 
@@ -123,6 +123,33 @@ async def refresh_token(
         "refresh_token": create_user_refresh_token(data),
         "token_type": "bearer",
     }
+
+
+@router.post("/password-reset", response_model=UserPasswordResetResponse, status_code=status.HTTP_200_OK)
+async def reset_user_password(
+        *,
+        db: AsyncSession = Depends(get_db),
+        user_id: str = Depends(get_current_user_id),
+        password_in: UserPasswordReset,
+):
+    """
+    병원직/관리자 최초 또는 강제 비밀번호 재설정 처리
+    """
+    user = await crud_user.get(db, id=user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="사용자를 찾을 수 없습니다.")
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="비활성화된 계정입니다.",
+        )
+
+    user.password_hash = get_password_hash(password_in.password)
+    user.is_reset_password = False
+    await db.commit()
+
+    return UserPasswordResetResponse(is_reset_password=user.is_reset_password)
 
 
 @router.get("/me", response_model=UserMeResponse, status_code=status.HTTP_200_OK)
