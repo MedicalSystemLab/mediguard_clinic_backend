@@ -169,12 +169,6 @@ async def analyze_ecg_ppg_batch(patient_id: str, ecg: list, ppg: list, start_tim
         base_sbp = bp_init_log.baseSBP
         base_dbp = bp_init_log.baseDBP
 
-        if base_dbp is None:
-            base_dbp = 80
-
-        if base_sbp is None:
-            base_sbp = 120
-
         bp_features = BpFeatures(
             pttf=bp_init_log.pttf,
             pttd=bp_init_log.pttd,

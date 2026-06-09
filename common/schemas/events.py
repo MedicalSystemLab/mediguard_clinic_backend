@@ -91,8 +91,8 @@ class BiosignalBPInitEvent(BaseModel):
     baseSBP: float
     baseDBP: float
 
-    corrMean: float
-    keepRatio: float
+    # corrMean: float
+    # keepRatio: float
 
     # 데이터 역 추적용 시간 값
     started_at: int
