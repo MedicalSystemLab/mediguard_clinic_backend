@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.app.models.auth import AuthPermissionEnum, User
-from clinical_manage.app.models.info import PatientProfile, PractitionerProfiles
+from clinical_manage.app.models.info import PatientProfile
 from clinical_manage.app.models.manage import FavoritePatient, Manage
 from common.core.auth import TokenPayload, get_current_user_payload
 from common.db.session import get_db
@@ -58,11 +58,6 @@ async def ensure_patient_access(
     if user.permissions == AuthPermissionEnum.administrator:
         return patient
 
-    practitioner_result = await db.execute(
-        select(PractitionerProfiles).where(PractitionerProfiles.practitioner_id == user.user_id)
-    )
-    practitioner = practitioner_result.scalar_one_or_none()
-
     manage_result = await db.execute(
         select(Manage).where(
             Manage.practitioner_id == user.user_id,
@@ -72,18 +67,10 @@ async def ensure_patient_access(
     if manage_result.scalar_one_or_none() is not None:
         return patient
 
-    if practitioner and practitioner.department_id and practitioner.department_id == patient.department_id:
-        return patient
-
-    if practitioner and practitioner.ward_id and practitioner.ward_id == patient.admitted_ward_id:
-        return patient
-
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="해당 환자에 대한 접근 권한이 없습니다.",
     )
-
-    return patient
 
 
 def to_response(favorite: FavoritePatient, patient: PatientProfile) -> FavoritePatientResponse:

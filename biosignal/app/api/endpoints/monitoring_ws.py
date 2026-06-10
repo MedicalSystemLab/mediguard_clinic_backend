@@ -158,8 +158,6 @@ async def can_access_patient(token_data: TokenPayload, patient_id: UUID) -> bool
             text("""
                 SELECT 1
                 FROM clinical_manage.patient_profile patient
-                LEFT JOIN clinical_manage.practitioner_profiles practitioner
-                  ON practitioner.practitioner_id = CAST(:user_id AS uuid)
                 WHERE patient.patient_id = CAST(:patient_id AS uuid)
                   AND (
                     patient.manage_practitioner_id = CAST(:user_id AS uuid)
@@ -168,10 +166,6 @@ async def can_access_patient(token_data: TokenPayload, patient_id: UUID) -> bool
                       FROM clinical_manage.manage manage
                       WHERE manage.practitioner_id = CAST(:user_id AS uuid)
                         AND manage.patient_id = patient.patient_id
-                    )
-                    OR (
-                      practitioner.department_id IS NOT NULL
-                      AND practitioner.department_id = patient.department_id
                     )
                   )
                 LIMIT 1
