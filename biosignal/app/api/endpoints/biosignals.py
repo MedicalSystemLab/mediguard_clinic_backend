@@ -266,7 +266,7 @@ async def read_biomatrix_aggregates(
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
         end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
 ):
-    await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
+    # await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
     start_dt, end_dt = get_biomatrix_time_range(start_time, end_time)
 
     if records_interval == 0:
@@ -364,7 +364,7 @@ async def read_hr_aggregates(
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
         end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
 ):
-    await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
+    # await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
     return await read_single_biometric(
         patient_id=patient_id,
         db=db,
@@ -385,7 +385,7 @@ async def read_rr_aggregates(
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
         end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
 ):
-    await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
+    # await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
     return await read_single_biometric(
         patient_id=patient_id,
         db=db,
@@ -406,7 +406,7 @@ async def read_temp_aggregates(
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
         end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
 ):
-    await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
+    # await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
     return await read_single_biometric(
         patient_id=patient_id,
         db=db,
@@ -427,7 +427,7 @@ async def read_spo2_aggregates(
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
         end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
 ):
-    await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
+    # await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
     return await read_single_biometric(
         patient_id=patient_id,
         db=db,
@@ -447,7 +447,7 @@ async def read_bp_measures(
         start_time: int | None = Query(None, description="조회 시작 시간 timestamp ms"),
         end_time: int | None = Query(None, description="조회 종료 시간 timestamp ms"),
 ):
-    await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
+    # await ensure_practitioner_can_read_patient(db=db, token_payload=token_payload, patient_id=patient_id)
     start_dt, end_dt = get_biomatrix_time_range(start_time, end_time)
     query = text("""
         SELECT
