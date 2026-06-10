@@ -1,4 +1,5 @@
 from fastapi import APIRouter, status, HTTPException, Depends, Request
+from sqlalchemy import false
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
@@ -149,7 +150,7 @@ async def reset_user_password(
     user.is_reset_password = False
     await db.commit()
 
-    return UserPasswordResetResponse(is_reset_password=user.is_reset_password)
+    return UserPasswordResetResponse(is_reset_password=False)
 
 
 @router.get("/me", response_model=UserMeResponse, status_code=status.HTTP_200_OK)
