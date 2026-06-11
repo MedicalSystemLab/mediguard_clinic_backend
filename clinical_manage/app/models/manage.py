@@ -42,7 +42,7 @@ class AlertConfig(ClinicBase):
 
     patient_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), sa.ForeignKey("clinical_manage.patient_profile.patient_id", ondelete="CASCADE"),
-        index=True, nullable=False)
+        index=True, primary_key=True, nullable=False)
     bpm_max: Mapped[int] = mapped_column(Integer, nullable=False, default=120)
     bpm_min: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
     bpm_alert_paused_until: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
