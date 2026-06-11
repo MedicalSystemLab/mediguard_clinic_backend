@@ -11,3 +11,4 @@ include:
   - ./consumer_analysis/docker-compose.yml
   - ./biosignal/docker-compose.yml
   - ./clinical_manage/docker-compose.yml
+  - ./notification/docker-compose.yml
