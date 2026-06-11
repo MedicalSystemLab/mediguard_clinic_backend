@@ -1,0 +1,28 @@
+services:
+  notification:
+    build:
+      context: ..
+      dockerfile: notification/Dockerfile
+    container_name: mediguard-notification
+    volumes:
+      - ../secrets/firebase-service-account.json:/app/secrets/firebase-service-account.json:ro
+    env_file:
+      - ../.env
+    environment:
+      - POSTGRES_SERVER=postgres_db
+      - POSTGRES_PORT=5432
+      - KAFKA_BOOTSTRAP_SERVERS=redpanda:29092
+    ports:
+      - "8005:8000"
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

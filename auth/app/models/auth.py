@@ -40,3 +40,12 @@ class Patient(AuthBase):
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     __table_args__ = {"schema": "auth"}
+
+
+class FCMToken(AuthBase):
+    __tablename__ = "fcm_token"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, index=True, nullable=False)
+    token: Mapped[str] = mapped_column(String(255), nullable=False)
+    platform: Mapped[str] = mapped_column(String(255), nullable=False, default="android")
+    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)

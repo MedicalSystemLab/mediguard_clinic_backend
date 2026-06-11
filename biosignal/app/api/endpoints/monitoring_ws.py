@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 from aiokafka import AIOKafkaConsumer
 from fastapi import APIRouter, Header, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from starlette.responses import StreamingResponse
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
 
 from common.core.auth import TokenPayload, decode_authorization_payload, decode_token_payload
@@ -175,6 +176,40 @@ async def can_access_patient(token_data: TokenPayload, patient_id: UUID) -> bool
         return result.scalar_one_or_none() is not None
 
 
+async def replace_patient_alert_recipients(practitioner_id: str, patient_ids: set[str]) -> None:
+    async with SessionLocal() as db:
+        async with db.begin():
+            await db.execute(
+                text("""
+                    DELETE FROM clinical_manage.patient_alert_recipient
+                    WHERE practitioner_id = CAST(:practitioner_id AS uuid)
+                """),
+                {"practitioner_id": practitioner_id},
+            )
+
+            if not patient_ids:
+                return
+
+            await db.execute(
+                text("""
+                    INSERT INTO clinical_manage.patient_alert_recipient (
+                        patient_id,
+                        practitioner_id,
+                        enabled
+                    )
+                    VALUES (
+                        CAST(:patient_id AS uuid),
+                        CAST(:practitioner_id AS uuid),
+                        true
+                    )
+                """),
+                [
+                    {"patient_id": patient_id, "practitioner_id": practitioner_id}
+                    for patient_id in patient_ids
+                ],
+            )
+
+
 async def send_error(websocket: WebSocket, message: str) -> None:
     await websocket.send_json({"type": "error", "message": message})
 
@@ -277,6 +312,13 @@ async def monitoring_websocket(websocket: WebSocket):
                     patient_ids = {str(UUID(patient_id)) for patient_id in requested_patient_ids}
                 except (TypeError, ValueError):
                     await send_error(websocket, "Invalid patient_id in patient_ids")
+                    continue
+
+                try:
+                    await replace_patient_alert_recipients(token_data.sub, patient_ids)
+                except SQLAlchemyError:
+                    logger.error("Failed to replace alert recipients", exc_info=True)
+                    await send_error(websocket, "Failed to save alert recipients")
                     continue
 
                 await manager.set_home_patients(websocket, patient_ids)

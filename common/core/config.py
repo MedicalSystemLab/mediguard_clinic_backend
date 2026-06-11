@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     KAFKA_TOPIC_BIOSIGNAL: str = "biosignal-events"
     KAFKA_TOPIC_AUTH: str = "auth-events"
     KAFKA_TOPIC_USER: str = "clinical_manage-events"
+
+    # FCM Notification Configuration
+    FCM_PROJECT_ID: str | None = os.getenv("FCM_PROJECT_ID")
+    FCM_SERVICE_ACCOUNT_FILE: str | None = os.getenv("FCM_SERVICE_ACCOUNT_FILE")
+    FCM_SERVICE_ACCOUNT_JSON: str | None = os.getenv("FCM_SERVICE_ACCOUNT_JSON")
     
     # Redis Configuration
     REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
