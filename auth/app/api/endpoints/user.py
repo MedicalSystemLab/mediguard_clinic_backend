@@ -1,20 +1,50 @@
 from fastapi import APIRouter, status, HTTPException, Depends, Request
-from sqlalchemy import false
+from sqlalchemy import false, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
-from common.core.auth import get_current_user_id
+from common.core.auth import TokenPayload, get_current_user_id, get_current_user_payload
 from common.core.security import get_password_hash, verify_password, create_user_access_token, create_user_refresh_token
 from common.core.config import settings
 from common.core.kafka_producer import publish_event
 from common.db.session import get_db
 from common.schemas.events import UserRegisteredEvent
-from auth.app.schemas.auth import UserRegister, Token, UserLogin, UserMeResponse, UserPasswordReset, UserPasswordResetResponse
+from auth.app.schemas.auth import (
+    FCMDeviceRegister,
+    FCMDeviceRegisterResponse,
+    Token,
+    UserLogin,
+    UserLogout,
+    UserLogoutResponse,
+    UserMeResponse,
+    UserPasswordReset,
+    UserPasswordResetResponse,
+    UserRegister,
+)
 from auth.app.schemas.auth import User as UserSchema
 from auth.app.api.commons.crud_user import user as crud_user
 
 router = APIRouter()
 security = HTTPBearer()
+
+HOSPITAL_USER_PERMISSIONS = {"administrator", "practitioner"}
+
+
+def ensure_hospital_user(token_payload: TokenPayload) -> None:
+    if token_payload.permissions not in HOSPITAL_USER_PERMISSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="병원직 사용자 권한이 필요합니다.",
+        )
+
+
+def ensure_access_token(token_payload: TokenPayload) -> None:
+    if token_payload.type != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Access Token이 필요합니다.",
+        )
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(
@@ -85,6 +115,101 @@ async def user_login(
         "token_type": "bearer",
         "is_reset_password": is_reset_password
     }
+
+
+@router.post("/fcm", response_model=FCMDeviceRegisterResponse, status_code=status.HTTP_200_OK)
+async def register_fcm_device(
+        *,
+        db: AsyncSession = Depends(get_db),
+        device_in: FCMDeviceRegister,
+        token_payload: TokenPayload = Depends(get_current_user_payload),
+):
+    """
+    병원직/관리자 FCM 디바이스 등록
+    """
+    ensure_access_token(token_payload)
+    ensure_hospital_user(token_payload)
+
+    try:
+        await db.execute(
+            text("""
+                INSERT INTO clinical_manage.practitioner_device (
+                    practitioner_id,
+                    fcm_token,
+                    platform,
+                    is_active,
+                    last_seen_at,
+                    updated_at
+                )
+                VALUES (
+                    CAST(:practitioner_id AS uuid),
+                    :fcm_token,
+                    :platform,
+                    true,
+                    now(),
+                    now()
+                )
+                ON CONFLICT (fcm_token)
+                DO UPDATE SET
+                    practitioner_id = EXCLUDED.practitioner_id,
+                    platform = EXCLUDED.platform,
+                    is_active = true,
+                    last_seen_at = now(),
+                    updated_at = now()
+            """),
+            {
+                "practitioner_id": token_payload.sub,
+                "fcm_token": device_in.fcm_token,
+                "platform": device_in.platform,
+            },
+        )
+        await db.commit()
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="FCM 기기 등록에 실패했습니다.",
+        ) from exc
+
+    return FCMDeviceRegisterResponse(registered=True)
+
+
+@router.post("/logout", response_model=UserLogoutResponse, status_code=status.HTTP_200_OK)
+async def user_logout(
+        *,
+        db: AsyncSession = Depends(get_db),
+        logout_in: UserLogout,
+        token_payload: TokenPayload = Depends(get_current_user_payload),
+):
+    """
+    병원직/관리자 로그아웃 및 FCM 디바이스 비활성화
+    """
+    ensure_access_token(token_payload)
+    ensure_hospital_user(token_payload)
+
+    try:
+        await db.execute(
+            text("""
+                UPDATE clinical_manage.practitioner_device
+                SET is_active = false,
+                    updated_at = now()
+                WHERE practitioner_id = CAST(:practitioner_id AS uuid)
+                  AND fcm_token = :fcm_token
+            """),
+            {
+                "practitioner_id": token_payload.sub,
+                "fcm_token": logout_in.fcm_token,
+            },
+        )
+        await db.commit()
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="로그아웃 처리에 실패했습니다.",
+        ) from exc
+
+    return UserLogoutResponse(logged_out=True)
 
 
 @router.post("/refresh", response_model=Token, status_code=status.HTTP_200_OK)

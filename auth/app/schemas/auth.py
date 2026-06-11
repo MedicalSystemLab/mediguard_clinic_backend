@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 import uuid
 
 class UserRegister(BaseModel):
@@ -40,6 +40,23 @@ class UserPasswordReset(BaseModel):
 
 class UserPasswordResetResponse(BaseModel):
     is_reset_password: bool
+
+class FCMDeviceRegister(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    fcm_token: str = Field(min_length=1, alias="fcmToken")
+    platform: str | None = None
+
+class FCMDeviceRegisterResponse(BaseModel):
+    registered: bool
+
+class UserLogout(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    fcm_token: str = Field(min_length=1, alias="fcmToken")
+
+class UserLogoutResponse(BaseModel):
+    logged_out: bool
 
 class PatientLogin(BaseModel):
     patient_number: str
