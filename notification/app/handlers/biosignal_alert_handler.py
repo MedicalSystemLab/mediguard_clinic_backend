@@ -126,11 +126,10 @@ async def _load_recipients(db, patient_id: str) -> list[dict]:
         text("""
             SELECT
                 recipient.practitioner_id,
-                device.fcm_token
+                fcm.token AS fcm_token
             FROM clinical_manage.patient_alert_recipient recipient
-            JOIN clinical_manage.practitioner_device device
-              ON device.practitioner_id = recipient.practitioner_id
-             AND device.is_active IS TRUE
+            JOIN auth.fcm_token fcm
+              ON fcm.user_id = recipient.practitioner_id
             JOIN auth.users users
               ON users.user_id = recipient.practitioner_id
              AND users.is_active IS TRUE
