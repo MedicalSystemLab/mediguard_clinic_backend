@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import select, text
+from sqlalchemy import select
 
 from auth.app.models.auth import FCMToken, User
 from common.db.session import SessionLocal
@@ -35,14 +35,6 @@ def _to_float(value) -> float | None:
         return None
     try:
         return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _event_recorded_at(event_data: dict) -> datetime | None:
-    timestamp = event_data.get("recorded_at") or event_data.get("ended_at")
-    try:
-        return datetime.fromtimestamp(int(timestamp) / 1000, tz=timezone.utc)
     except (TypeError, ValueError):
         return None
 
@@ -176,58 +168,6 @@ async def _load_recipients(db, patient_id: str) -> list[dict]:
     return [dict(row) for row in result.mappings()]
 
 
-async def _write_alert_log(
-        db,
-        *,
-        patient_id: str,
-        practitioner_id: UUID | None,
-        violation: ThresholdViolation,
-        event_recorded_at: datetime | None,
-        fcm_success: bool,
-        error_message: str | None,
-) -> None:
-    await db.execute(
-        text("""
-            INSERT INTO biosignal.alert_log (
-                patient_id,
-                practitioner_id,
-                metric_type,
-                measured_value,
-                threshold_min,
-                threshold_max,
-                direction,
-                event_recorded_at,
-                fcm_success,
-                error_message
-            )
-            VALUES (
-                CAST(:patient_id AS uuid),
-                CAST(:practitioner_id AS uuid),
-                :metric_type,
-                :measured_value,
-                :threshold_min,
-                :threshold_max,
-                :direction,
-                :event_recorded_at,
-                :fcm_success,
-                :error_message
-            )
-        """),
-        {
-            "patient_id": patient_id,
-            "practitioner_id": str(practitioner_id) if practitioner_id else None,
-            "metric_type": violation.metric_type,
-            "measured_value": violation.measured_value,
-            "threshold_min": violation.threshold_min,
-            "threshold_max": violation.threshold_max,
-            "direction": violation.direction,
-            "event_recorded_at": event_recorded_at,
-            "fcm_success": fcm_success,
-            "error_message": error_message[:1000] if error_message else None,
-        },
-    )
-
-
 async def handle_biosignal_alert_event(event_data: dict) -> None:
     event_type = event_data.get("event_type")
     patient_id = event_data.get("patient_id")
@@ -250,26 +190,16 @@ async def handle_biosignal_alert_event(event_data: dict) -> None:
     if not metrics:
         return
 
-    event_recorded_at = _event_recorded_at(event_data)
     async with SessionLocal() as db:
         thresholds = await _load_thresholds(db, patient_id)
         violations = _find_violations(metrics, thresholds)
         if not violations:
+            await db.commit()
             return
 
         recipients = await _load_recipients(db, patient_id)
         if not recipients:
             logger.info("No alert recipients for patient_id=%s", patient_id)
-            for violation in violations:
-                await _write_alert_log(
-                    db,
-                    patient_id=patient_id,
-                    practitioner_id=None,
-                    violation=violation,
-                    event_recorded_at=event_recorded_at,
-                    fcm_success=False,
-                    error_message="No alert recipients",
-                )
             await db.commit()
             return
 
@@ -284,14 +214,13 @@ async def handle_biosignal_alert_event(event_data: dict) -> None:
                     body=body,
                     data=data,
                 )
-                await _write_alert_log(
-                    db,
-                    patient_id=patient_id,
-                    practitioner_id=recipient["practitioner_id"],
-                    violation=violation,
-                    event_recorded_at=event_recorded_at,
-                    fcm_success=result.success,
-                    error_message=result.error_message,
-                )
+                if not result.success:
+                    logger.warning(
+                        "Failed to send FCM alert patient_id=%s practitioner_id=%s metric_type=%s error=%s",
+                        patient_id,
+                        recipient["practitioner_id"],
+                        violation.metric_type,
+                        result.error_message,
+                    )
 
         await db.commit()
