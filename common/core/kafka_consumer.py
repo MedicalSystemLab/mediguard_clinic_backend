@@ -23,8 +23,9 @@ def set_metrics_updater(update_fn, increment_fn):
 class KafkaConsumerManager:
     """Kafka Consumer Manager for handling events"""
 
-    def __init__(self, group_id: str = "mediguard-consumer-group"):
+    def __init__(self, group_id: str = "mediguard-consumer-group", auto_offset_reset: str = "earliest"):
         self.group_id = group_id
+        self.auto_offset_reset = auto_offset_reset
         self.consumer = None
         self.handlers: Dict[str, Callable] = {}
         self.running = False
@@ -53,7 +54,7 @@ class KafkaConsumerManager:
             group_id=self.group_id,
             value_deserializer=lambda m: json.loads(m.decode('utf-8')),
             key_deserializer=lambda k: k.decode('utf-8') if k else None,
-            auto_offset_reset='earliest',  # Start from beginning if no offset
+            auto_offset_reset=self.auto_offset_reset,
             enable_auto_commit=False,  # Manual commit for reliability
             max_poll_records=10,
         )

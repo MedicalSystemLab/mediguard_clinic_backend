@@ -7,6 +7,7 @@ from sqlalchemy import select, text
 
 from auth.app.models.auth import FCMToken, User
 from common.db.session import SessionLocal
+from clinical_manage.app.models.info import Department, PatientProfile, PractitionerProfiles, Ward
 from clinical_manage.app.models.manage import AlertConfig, PatientAlertRecipient
 from notification.app.services.fcm import FcmClient
 

@@ -2,6 +2,7 @@ import asyncio
 import logging
 import sys
 from pathlib import Path
+from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
@@ -35,7 +36,10 @@ async def run_consumer() -> None:
     logger.info("Starting Kafka notification consumer...")
     set_metrics_updater(update_metrics, increment_metric)
 
-    consumer_manager = KafkaConsumerManager(group_id="mediguard-notification-consumer-group")
+    consumer_manager = KafkaConsumerManager(
+        group_id=f"mediguard-notification-consumer-group-{uuid4()}",
+        auto_offset_reset="latest",
+    )
     consumer_manager.register_handler("biosignal.biomatrix.received", handle_biosignal_alert_event)
     consumer_manager.register_handler("biosignal.BP.measured", handle_biosignal_alert_event)
 
