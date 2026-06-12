@@ -62,6 +62,8 @@ class PatientAlertRecipient(ClinicBase):
 
 class AlertConfig(ClinicBase):
     __tablename__ = "alert_config"
+    __table_args__ = {"schema": "clinical_manage"}
+
 
     patient_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), sa.ForeignKey("clinical_manage.patient_profile.patient_id", ondelete="CASCADE"),
