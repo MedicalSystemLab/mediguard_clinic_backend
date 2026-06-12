@@ -54,7 +54,14 @@ class FcmClient:
             if not credential_path.exists():
                 logger.error("FCM service account file does not exist: %s", credential_path)
                 return None
-            return json.loads(credential_path.read_text())
+            if not credential_path.is_file():
+                logger.error("FCM service account path is not a file: %s", credential_path)
+                return None
+            try:
+                return json.loads(credential_path.read_text())
+            except (OSError, json.JSONDecodeError) as exc:
+                logger.error("Failed to load FCM service account file %s: %s", credential_path, exc)
+                return None
 
         logger.warning("FCM credentials are not configured; alert sends will be skipped")
         return None
