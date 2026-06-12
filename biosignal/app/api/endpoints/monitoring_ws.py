@@ -9,11 +9,13 @@ from aiokafka import AIOKafkaConsumer
 from fastapi import APIRouter, Header, HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from starlette.responses import StreamingResponse
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import text
+from sqlalchemy import delete, or_, select
 
 from common.core.auth import TokenPayload, decode_authorization_payload, decode_token_payload
 from common.core.config import settings
 from common.db.session import SessionLocal
+from clinical_manage.app.models.info import PatientProfile
+from clinical_manage.app.models.manage import Manage, PatientAlertRecipient
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -154,59 +156,56 @@ async def can_access_patient(token_data: TokenPayload, patient_id: UUID) -> bool
     if token_data.permissions == ADMINISTRATOR_PERMISSION:
         return True
 
+    try:
+        user_id = UUID(token_data.sub)
+    except (TypeError, ValueError):
+        return False
+
     async with SessionLocal() as db:
+        managed_patient_exists = (
+            select(Manage.manage_id)
+            .where(
+                Manage.practitioner_id == user_id,
+                Manage.patient_id == PatientProfile.patient_id,
+            )
+            .exists()
+        )
         result = await db.execute(
-            text("""
-                SELECT 1
-                FROM clinical_manage.patient_profile patient
-                WHERE patient.patient_id = CAST(:patient_id AS uuid)
-                  AND (
-                    patient.manage_practitioner_id = CAST(:user_id AS uuid)
-                    OR EXISTS (
-                      SELECT 1
-                      FROM clinical_manage.manage manage
-                      WHERE manage.practitioner_id = CAST(:user_id AS uuid)
-                        AND manage.patient_id = patient.patient_id
-                    )
-                  )
-                LIMIT 1
-            """),
-            {"user_id": token_data.sub, "patient_id": str(patient_id)},
+            select(PatientProfile.patient_id).where(
+                PatientProfile.patient_id == patient_id,
+                or_(
+                    PatientProfile.manage_practitioner_id == user_id,
+                    managed_patient_exists,
+                ),
+            )
         )
         return result.scalar_one_or_none() is not None
 
 
 async def replace_patient_alert_recipients(practitioner_id: str, patient_ids: set[str]) -> None:
+    practitioner_uuid = UUID(practitioner_id)
+    patient_uuids = {UUID(patient_id) for patient_id in patient_ids}
+
     async with SessionLocal() as db:
         async with db.begin():
             await db.execute(
-                text("""
-                    DELETE FROM clinical_manage.patient_alert_recipient
-                    WHERE practitioner_id = CAST(:practitioner_id AS uuid)
-                """),
-                {"practitioner_id": practitioner_id},
+                delete(PatientAlertRecipient).where(
+                    PatientAlertRecipient.practitioner_id == practitioner_uuid
+                )
             )
 
-            if not patient_ids:
+            if not patient_uuids:
                 return
 
-            await db.execute(
-                text("""
-                    INSERT INTO clinical_manage.patient_alert_recipient (
-                        patient_id,
-                        practitioner_id,
-                        enabled
-                    )
-                    VALUES (
-                        CAST(:patient_id AS uuid),
-                        CAST(:practitioner_id AS uuid),
-                        true
-                    )
-                """),
+            db.add_all(
                 [
-                    {"patient_id": patient_id, "practitioner_id": practitioner_id}
-                    for patient_id in patient_ids
-                ],
+                    PatientAlertRecipient(
+                        patient_id=patient_id,
+                        practitioner_id=practitioner_uuid,
+                        enabled=True,
+                    )
+                    for patient_id in patient_uuids
+                ]
             )
 
 

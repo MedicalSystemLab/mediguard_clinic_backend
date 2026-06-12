@@ -1,4 +1,4 @@
-from sqlalchemy import String, UUID, TIMESTAMP, UniqueConstraint, Integer
+from sqlalchemy import String, UUID, TIMESTAMP, UniqueConstraint, Integer, Boolean
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -37,6 +37,29 @@ class FavoritePatient(ClinicBase):
 
     __table_args__ = {"schema": "clinical_manage"}
 
+
+class PatientAlertRecipient(ClinicBase):
+    __tablename__ = "patient_alert_recipient"
+
+    patient_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        sa.ForeignKey("clinical_manage.patient_profile.patient_id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
+    )
+    practitioner_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        sa.ForeignKey("clinical_manage.practitioner_profiles.practitioner_id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+        nullable=False,
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=sa.text("true"))
+    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = {"schema": "clinical_manage"}
+
+
 class AlertConfig(ClinicBase):
     __tablename__ = "alert_config"
 
@@ -59,4 +82,3 @@ class AlertConfig(ClinicBase):
     temp_min: Mapped[int] = mapped_column(Integer, nullable=False, default=35)
     temp_alert_paused_until: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
-

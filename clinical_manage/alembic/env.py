@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 from common.core.config import settings
 from clinical_manage.app.models.base import ClinicBase
 from clinical_manage.app.models.info import Ward, Department, PractitionerProfiles, PatientProfile
-from clinical_manage.app.models.manage import Manage, FavoritePatient
+from clinical_manage.app.models.manage import Manage, FavoritePatient, PatientAlertRecipient
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

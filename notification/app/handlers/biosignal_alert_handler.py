@@ -3,9 +3,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 
+from auth.app.models.auth import FCMToken, User
 from common.db.session import SessionLocal
+from clinical_manage.app.models.manage import PatientAlertRecipient
 from notification.app.services.fcm import FcmClient
 
 logger = logging.getLogger(__name__)
@@ -123,20 +125,17 @@ async def _load_thresholds(db, patient_id: str) -> dict[str, dict]:
 
 async def _load_recipients(db, patient_id: str) -> list[dict]:
     result = await db.execute(
-        text("""
-            SELECT
-                recipient.practitioner_id,
-                fcm.token AS fcm_token
-            FROM clinical_manage.patient_alert_recipient recipient
-            JOIN auth.fcm_token fcm
-              ON fcm.user_id = recipient.practitioner_id
-            JOIN auth.users users
-              ON users.user_id = recipient.practitioner_id
-             AND users.is_active IS TRUE
-            WHERE recipient.patient_id = CAST(:patient_id AS uuid)
-              AND recipient.enabled IS TRUE
-        """),
-        {"patient_id": patient_id},
+        select(
+            PatientAlertRecipient.practitioner_id,
+            FCMToken.token.label("fcm_token"),
+        )
+        .join(FCMToken, FCMToken.user_id == PatientAlertRecipient.practitioner_id)
+        .join(User, User.user_id == PatientAlertRecipient.practitioner_id)
+        .where(
+            PatientAlertRecipient.patient_id == UUID(patient_id),
+            PatientAlertRecipient.enabled.is_(True),
+            User.is_active.is_(True),
+        )
     )
     return [dict(row) for row in result.mappings()]
 
