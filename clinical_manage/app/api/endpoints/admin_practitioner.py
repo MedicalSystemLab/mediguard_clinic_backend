@@ -226,7 +226,7 @@ async def create_practitioner(
         password_hash=get_password_hash(practitioner_in.password),
         permissions=practitioner_in.permissions,
         is_active=True,
-        is_reset_password=False,
+        is_reset_password=True,
     )
     db.add(user)
     await db.flush()
