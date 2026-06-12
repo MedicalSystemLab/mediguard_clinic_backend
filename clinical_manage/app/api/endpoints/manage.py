@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, status, Depends, HTTPException, Header
@@ -24,6 +24,13 @@ ALERT_PAUSE_FIELDS = {
     "rr_alert_paused_until",
     "bp_alert_paused_until",
     "temp_alert_paused_until",
+}
+ALERT_METRIC_PAUSE_FIELDS = {
+    "bpm": ("bpm_alert_paused_until",),
+    "resp": ("rr_alert_paused_until",),
+    "spo2": ("spo2_alert_paused_until",),
+    "temp": ("temp_alert_paused_until",),
+    "bp": ("bp_alert_paused_until",),
 }
 
 
@@ -149,6 +156,25 @@ async def get_or_create_alert_config(db: AsyncSession, patient_id: UUID) -> Aler
     return alert_config
 
 
+async def set_alert_pause_until(
+        *,
+        db: AsyncSession,
+        token_payload: TokenPayload,
+        pause_fields: tuple[str, ...],
+        paused_until: datetime,
+) -> AlertConfigResponse:
+    patient_id = get_patient_id_from_access_token(token_payload)
+    alert_config = await get_or_create_alert_config(db, patient_id)
+    for field in pause_fields:
+        setattr(alert_config, field, paused_until)
+    alert_config.updated_at = datetime.now(timezone.utc)
+    await db.flush()
+    await db.refresh(alert_config)
+    response = AlertConfigResponse.model_validate(alert_config)
+    await db.commit()
+    return response
+
+
 @router.get("/profile", status_code=status.HTTP_200_OK)
 async def get_profile(
     *,
@@ -206,6 +232,174 @@ async def read_patient_alert_config(
     await db.commit()
 
     return response
+
+
+@router.post("/alert/disable", response_model=AlertConfigResponse, status_code=status.HTTP_200_OK)
+async def disable_all_alerts(
+        *,
+        db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_patient_access_token_payload),
+):
+    return await set_alert_pause_until(
+        db=db,
+        token_payload=token_payload,
+        pause_fields=tuple(ALERT_PAUSE_FIELDS),
+        paused_until=datetime.now(timezone.utc) + timedelta(minutes=1),
+    )
+
+
+@router.post("/alert/disable/bpm", response_model=AlertConfigResponse, status_code=status.HTTP_200_OK)
+async def disable_bpm_alert(
+        *,
+        db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_patient_access_token_payload),
+):
+    return await set_alert_pause_until(
+        db=db,
+        token_payload=token_payload,
+        pause_fields=ALERT_METRIC_PAUSE_FIELDS["bpm"],
+        paused_until=datetime.now(timezone.utc) + timedelta(minutes=1),
+    )
+
+
+@router.post("/alert/disable/resp", response_model=AlertConfigResponse, status_code=status.HTTP_200_OK)
+async def disable_resp_alert(
+        *,
+        db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_patient_access_token_payload),
+):
+    return await set_alert_pause_until(
+        db=db,
+        token_payload=token_payload,
+        pause_fields=ALERT_METRIC_PAUSE_FIELDS["resp"],
+        paused_until=datetime.now(timezone.utc) + timedelta(minutes=1),
+    )
+
+
+@router.post("/alert/disable/spo2", response_model=AlertConfigResponse, status_code=status.HTTP_200_OK)
+async def disable_spo2_alert(
+        *,
+        db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_patient_access_token_payload),
+):
+    return await set_alert_pause_until(
+        db=db,
+        token_payload=token_payload,
+        pause_fields=ALERT_METRIC_PAUSE_FIELDS["spo2"],
+        paused_until=datetime.now(timezone.utc) + timedelta(minutes=1),
+    )
+
+
+@router.post("/alert/disable/temp", response_model=AlertConfigResponse, status_code=status.HTTP_200_OK)
+async def disable_temp_alert(
+        *,
+        db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_patient_access_token_payload),
+):
+    return await set_alert_pause_until(
+        db=db,
+        token_payload=token_payload,
+        pause_fields=ALERT_METRIC_PAUSE_FIELDS["temp"],
+        paused_until=datetime.now(timezone.utc) + timedelta(minutes=1),
+    )
+
+
+@router.post("/alert/disable/bp", response_model=AlertConfigResponse, status_code=status.HTTP_200_OK)
+async def disable_bp_alert(
+        *,
+        db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_patient_access_token_payload),
+):
+    return await set_alert_pause_until(
+        db=db,
+        token_payload=token_payload,
+        pause_fields=ALERT_METRIC_PAUSE_FIELDS["bp"],
+        paused_until=datetime.now(timezone.utc) + timedelta(minutes=1),
+    )
+
+
+@router.post("/alert/enable", response_model=AlertConfigResponse, status_code=status.HTTP_200_OK)
+async def enable_all_alerts(
+        *,
+        db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_patient_access_token_payload),
+):
+    return await set_alert_pause_until(
+        db=db,
+        token_payload=token_payload,
+        pause_fields=tuple(ALERT_PAUSE_FIELDS),
+        paused_until=datetime.now(timezone.utc),
+    )
+
+
+@router.post("/alert/enable/bpm", response_model=AlertConfigResponse, status_code=status.HTTP_200_OK)
+async def enable_bpm_alert(
+        *,
+        db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_patient_access_token_payload),
+):
+    return await set_alert_pause_until(
+        db=db,
+        token_payload=token_payload,
+        pause_fields=ALERT_METRIC_PAUSE_FIELDS["bpm"],
+        paused_until=datetime.now(timezone.utc),
+    )
+
+
+@router.post("/alert/enable/resp", response_model=AlertConfigResponse, status_code=status.HTTP_200_OK)
+async def enable_resp_alert(
+        *,
+        db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_patient_access_token_payload),
+):
+    return await set_alert_pause_until(
+        db=db,
+        token_payload=token_payload,
+        pause_fields=ALERT_METRIC_PAUSE_FIELDS["resp"],
+        paused_until=datetime.now(timezone.utc),
+    )
+
+
+@router.post("/alert/enable/spo2", response_model=AlertConfigResponse, status_code=status.HTTP_200_OK)
+async def enable_spo2_alert(
+        *,
+        db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_patient_access_token_payload),
+):
+    return await set_alert_pause_until(
+        db=db,
+        token_payload=token_payload,
+        pause_fields=ALERT_METRIC_PAUSE_FIELDS["spo2"],
+        paused_until=datetime.now(timezone.utc),
+    )
+
+
+@router.post("/alert/enable/temp", response_model=AlertConfigResponse, status_code=status.HTTP_200_OK)
+async def enable_temp_alert(
+        *,
+        db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_patient_access_token_payload),
+):
+    return await set_alert_pause_until(
+        db=db,
+        token_payload=token_payload,
+        pause_fields=ALERT_METRIC_PAUSE_FIELDS["temp"],
+        paused_until=datetime.now(timezone.utc),
+    )
+
+
+@router.post("/alert/enable/bp", response_model=AlertConfigResponse, status_code=status.HTTP_200_OK)
+async def enable_bp_alert(
+        *,
+        db: AsyncSession = Depends(get_db),
+        token_payload: TokenPayload = Depends(get_current_patient_access_token_payload),
+):
+    return await set_alert_pause_until(
+        db=db,
+        token_payload=token_payload,
+        pause_fields=ALERT_METRIC_PAUSE_FIELDS["bp"],
+        paused_until=datetime.now(timezone.utc),
+    )
 
 
 @router.patch("/alert/config", response_model=AlertConfigResponse, status_code=status.HTTP_200_OK)
