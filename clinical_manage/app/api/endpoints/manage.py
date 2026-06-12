@@ -6,7 +6,7 @@ from fastapi.security import HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, ConfigDict
-from auth.app.models.auth import User
+from auth.app.models.auth import AuthPermissionEnum, User
 from auth.app.models.auth import Patient
 from clinical_manage.app.models.info import PatientProfile, PractitionerProfiles
 from clinical_manage.app.models.manage import AlertConfig
@@ -91,6 +91,51 @@ async def get_current_patient_access_token_payload(
     return token_payload
 
 
+async def get_current_hospital_user(
+        *,
+        db: AsyncSession = Depends(get_db),
+        authorization: str = Header(..., description="Bearer <hospital access token>"),
+) -> User:
+    token_payload = decode_authorization_payload(authorization)
+    if token_payload.type != "access":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="병원직원 AccessToken만 사용할 수 있습니다.",
+        )
+
+    result = await db.execute(select(User).where(User.user_id == token_payload.sub))
+    user = result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="사용자를 찾을 수 없거나 비활성화된 계정입니다.",
+        )
+
+    if user.permissions not in {
+        AuthPermissionEnum.administrator,
+        AuthPermissionEnum.practitioner,
+    }:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="병원직원 권한이 필요합니다.",
+        )
+
+    return user
+
+
+async def ensure_patient_exists(
+        *,
+        db: AsyncSession,
+        patient_id: UUID,
+) -> None:
+    result = await db.execute(select(PatientProfile).where(PatientProfile.patient_id == patient_id))
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="환자를 찾을 수 없습니다.",
+        )
+
+
 async def get_or_create_alert_config(db: AsyncSession, patient_id: UUID) -> AlertConfig:
     result = await db.execute(select(AlertConfig).where(AlertConfig.patient_id == patient_id))
     alert_config = result.scalar_one_or_none()
@@ -137,6 +182,25 @@ async def read_alert_config(
         token_payload: TokenPayload = Depends(get_current_patient_access_token_payload),
 ):
     patient_id = get_patient_id_from_access_token(token_payload)
+    alert_config = await get_or_create_alert_config(db, patient_id)
+    response = AlertConfigResponse.model_validate(alert_config)
+    await db.commit()
+
+    return response
+
+
+@router.get(
+    "/alert/config/{patient_id}",
+    response_model=AlertConfigResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(get_current_hospital_user)],
+)
+async def read_patient_alert_config(
+        *,
+        patient_id: UUID,
+        db: AsyncSession = Depends(get_db),
+):
+    await ensure_patient_exists(db=db, patient_id=patient_id)
     alert_config = await get_or_create_alert_config(db, patient_id)
     response = AlertConfigResponse.model_validate(alert_config)
     await db.commit()
