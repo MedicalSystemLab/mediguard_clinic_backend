@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, status, Depends, HTTPException
+from fastapi import APIRouter, status, Depends, HTTPException, Header
 from fastapi.security import HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +12,7 @@ from clinical_manage.app.models.info import PatientProfile, PractitionerProfiles
 from clinical_manage.app.models.manage import AlertConfig
 from common.db.session import get_db
 from common.core.config import settings
-from common.core.auth import TokenPayload, get_current_patient_id, get_current_user_payload
+from common.core.auth import TokenPayload, decode_authorization_payload, get_current_patient_id
 from common.core.kafka_producer import publish_event
 
 
@@ -83,6 +83,14 @@ def get_patient_id_from_access_token(token_payload: TokenPayload) -> UUID:
         ) from exc
 
 
+async def get_current_patient_access_token_payload(
+        authorization: str = Header(..., description="Bearer <patient access token>"),
+) -> TokenPayload:
+    token_payload = decode_authorization_payload(authorization)
+    get_patient_id_from_access_token(token_payload)
+    return token_payload
+
+
 async def get_or_create_alert_config(db: AsyncSession, patient_id: UUID) -> AlertConfig:
     result = await db.execute(select(AlertConfig).where(AlertConfig.patient_id == patient_id))
     alert_config = result.scalar_one_or_none()
@@ -126,7 +134,7 @@ async def get_profile(
 async def read_alert_config(
         *,
         db: AsyncSession = Depends(get_db),
-        token_payload: TokenPayload = Depends(get_current_user_payload),
+        token_payload: TokenPayload = Depends(get_current_patient_access_token_payload),
 ):
     patient_id = get_patient_id_from_access_token(token_payload)
     alert_config = await get_or_create_alert_config(db, patient_id)
@@ -141,7 +149,7 @@ async def update_alert_config(
         *,
         alert_config_in: AlertConfigUpdate,
         db: AsyncSession = Depends(get_db),
-        token_payload: TokenPayload = Depends(get_current_user_payload),
+        token_payload: TokenPayload = Depends(get_current_patient_access_token_payload),
 ):
     patient_id = get_patient_id_from_access_token(token_payload)
     update_data = alert_config_in.model_dump(exclude_unset=True)
